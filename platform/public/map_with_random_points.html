@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能设备地理分布与病虫害检测系统</title>
+
+    <!-- 基础样式库 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- 地图与图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+    <!-- 自定义样式 -->
+    <style>
+        :root {
+            --primary-color: #1e88e5;
+            --secondary-color: #43a047;
+            --warning-color: #ffb300;
+            --danger-color: #f44336;
+            --info-color: #2979ff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 60px);
+            transition: height 0.3s ease;
+            position: relative;
+        }
+
+        .header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1001;
+        }
+
+        .status-legend {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            background-color: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .device-popup {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 12px;
+            min-width: 240px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* 病虫害检测模态框样式 */
+        #detectionModal .modal-content {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #detectionModal .modal-header {
+            background: linear-gradient(135deg, #1e88e5, #0d47a1);
+            color: white;
+            border-bottom: none;
+        }
+
+        #detectionModal .modal-body {
+            padding: 25px;
+        }
+
+        .camera-container {
+            position: relative;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            min-height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f9f9f9;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        #imagePreview, #cameraPreview {
+            max-width: 100%;
+            max-height: 300px;
+            display: none;
+        }
+
+        .upload-placeholder {
+            text-align: center;
+            padding: 20px;
+            color: #777;
+        }
+
+        .upload-placeholder i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #1e88e5;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .result-container {
+            display: none;
+            background: #f0f8ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #1e88e5;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .disease-name {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #0d47a1;
+        }
+
+        .confidence {
+            font-size: 1.1rem;
+            color: #43a047;
+            font-weight: 500;
+        }
+
+        .treatment-section {
+            background: #e8f5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .treatment-section h5 {
+            color: #2e7d32;
+            border-bottom: 1px solid #c8e6c9;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .btn-custom, .btn-map {
+            background-color: #1e88e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 15px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover, .btn-map:hover {
+            background-color: #1976d2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(13, 71, 161, 0.3);
+        }
+
+        .btn-secondary-custom {
+            background: linear-gradient(135deg, #78909c, #546e7a);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(84, 110, 122, 0.3);
+        }
+
+        .notification-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+            min-width: 250px;
+        }
+
+        .device-info-panel {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 250px;
+            display: none;
+        }
+
+        .device-info-panel h5 {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .village-boundary {
+            stroke: #1e88e5;
+            stroke-width: 2;
+            stroke-opacity: 0.7;
+            fill: #e3f2fd;
+            fill-opacity: 0.2;
+        }
+
+        /* 农田图片弹窗样式 */
+        .farm-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .farm-modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .farm-modal-content {
+            background-color: white;
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 800px;
+            width: 90%;
+            max-height: 80vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .farm-header {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            z-index: 1;
+        }
+
+        .farm-image-container {
+            position: relative;
+            flex-grow: 1;
+        }
+
+        .farm-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .farm-info {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            z-index: 1;
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            #map {
+                height: calc(100vh - 100px);
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 15px;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 5px;
+            }
+
+            .status-legend {
+                top: 120px;
+                right: 10px;
+                font-size: 0.8rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- 页面头部 -->
+<header class="header">
+    <div class="d-flex align-items-center">
+        <i class="fa fa-map-marker text-primary" style="font-size: 24px; margin-right: 10px;"></i>
+        <h3>智能设备地理分布与病虫害检测系统</h3>
+    </div>
+
+    <div class="controls d-flex gap-2">
+        <button id="locate" class="btn-map"><i class="fa fa-location-arrow"></i> 定位</button>
+        <button id="viewFarmBtn" class="btn-map"><i class="fa fa-eye"></i> 查看</button>
+        <button id="showDevices" class="btn btn-sm btn-success"><i class="fa fa-list"></i> 设备列表</button>
+    </div>
+</header>
+
+<!-- 地图容器 -->
+<div id="map"></div>
+
+
+<!-- 状态图例 -->
+<div class="status-legend">
+    <h5 class="mb-2"><i class="fa fa-info-circle"></i> 设备状态</h5>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: green;"></div>
+        <span>正常运行</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: orange;"></div>
+        <span>警告状态</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: red;"></div>
+        <span>故障状态</span>
+    </div>
+    <div class="legend-item">
+        <div class="legend-color" style="background-color: gray;"></div>
+        <span>离线状态</span>
+    </div>
+</div>
+
+<!-- 加载覆盖层 -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="text-center">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+        <p class="mt-2">正在加载地图和设备数据...</p>
+    </div>
+</div>
+
+<!-- 农田图片弹窗 -->
+<div class="farm-modal" id="farmModal">
+    <div class="farm-modal-content">
+        <div class="farm-header">农业基地实拍</div>
+        <div class="farm-image-container">
+            <img src="../src/assets/农田.jpg" alt="农业基地" class="farm-image">
+        </div>
+        <div class="farm-info">
+            <p>30亩地<br>设备7台</p>
+        </div>
+    </div>
+</div>
+
+<!-- 病虫害检测模态框 -->
+<div class="modal fade" id="detectionModal" tabindex="-1" aria-labelledby="detectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detectionModalLabel"><i class="fa fa-bug"></i> 病虫害检测</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <i class="fa fa-cloud-upload"></i>
+                        <p>请上传植物图片或拍照进行病虫害检测</p>
+                    </div>
+                    <img id="imagePreview" alt="预览图片">
+                    <video id="cameraPreview" autoplay playsinline style="display: none;"></video>
+                    <canvas id="captureCanvas" style="display: none;"></canvas>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-custom" id="uploadImageBtn">
+                        <i class="fa fa-upload"></i> 上传图片
+                    </button>
+                    <button class="btn btn-custom" id="startCameraBtn">
+                        <i class="fa fa-camera"></i> 拍照检测
+                    </button>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                    <button class="btn btn-custom" id="captureBtn" style="display: none;">
+                        <i class="fa fa-camera"></i> 拍照
+                    </button>
+                    <button class="btn btn-secondary-custom" id="retakeBtn" style="display: none;">
+                        <i class="fa fa-refresh"></i> 重拍
+                    </button>
+                </div>
+
+                <button class="btn btn-success w-100 mt-3" id="detectBtn" style="display: none;">
+                    <i class="fa fa-search"></i> 开始检测
+                </button>
+
+                <div class="result-container" id="resultContainer">
+                    <div class="result-header">
+                        <h4 class="disease-name" id="diseaseName">检测结果</h4>
+                        <div class="confidence" id="confidence">置信度: 0%</div>
+                    </div>
+                    <div class="diagnosis" id="diagnosis">
+                        <h5><i class="fa fa-stethoscope"></i> 诊断说明</h5>
+                        <p id="diagnosisText">诊断信息将显示在这里...</p>
+                    </div>
+                    <div class="treatment-section">
+                        <h5><i class="fa fa-heart"></i> 防治建议</h5>
+                        <p id="treatmentText">防治建议将显示在这里...</p>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-between">
+                        <button class="btn btn-secondary-custom" id="newDetectionBtn">
+                            <i class="fa fa-refresh"></i> 新的检测
+                        </button>
+                        <button class="btn btn-custom" id="downloadReportBtn">
+                            <i class="fa fa-download"></i> 下载报告
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3" id="detectionLoading" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在检测中，请稍候...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 通知Toast -->
+<div class="toast notification-toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="3000">
+    <div class="toast-header">
+        <strong class="me-auto">系统通知</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+        报告已成功生成并下载！
+    </div>
+</div>
+
+<!-- JavaScript 库 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- 地图初始化 -->
+<script>
+    // 加载指示器
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    // 农田图片弹窗
+    const farmModal = document.getElementById('farmModal');
+    const viewFarmBtn = document.getElementById('viewFarmBtn');
+
+    // 小村区域边界坐标（以中心点为基准进一步缩小的不规则多边形）
+    const villageBoundary = [
+        [27.458, 120.3785],   // 西南角（向中心点移动0.0005）
+        [27.4615, 120.3815],  // 东北角（向中心点移动0.0005）
+        [27.4605, 120.3845],  // 东北角偏东（向中心点移动0.0005）
+        [27.456, 120.3825],   // 西北角（向中心点移动0.0005）
+        [27.458, 120.3785]    // 闭合多边形
+    ];
+
+    // 模拟设备数据（全部位于区域内）
+    const deviceData = [
+        { id: 1, name: "北田传感器", status: "normal", lat: 27.4605, lng: 120.381, type: "传感器", location: "村北农田" },
+        { id: 2, name: "东园控制器", status: "warning", lat: 27.458, lng: 120.3828, type: "控制器", location: "村东果园" },
+        { id: 3, name: "南塘执行器", status: "fault", lat: 27.458, lng: 120.380, type: "执行器", location: "村南池塘" },
+        { id: 4, name: "西园传感器", status: "normal", lat: 27.459, lng: 120.380, type: "传感器", location: "村西菜园" },
+        { id: 5, name: "中心控制器", status: "offline", lat: 27.460, lng: 120.3818, type: "控制器", location: "村中心" },
+        { id: 6, name: "果园监测仪", status: "normal", lat: 27.46085, lng: 120.3832, type: "传感器", location: "村东果园" },
+        { id: 7, name: "村中心设备", status: "normal", lat: 27.460, lng: 120.3823, type: "服务器", location: "村控制中心" }
+    ];
+
+    // 设备状态样式映射
+    const statusStyles = {
+        normal: {
+            color: 'green',
+            icon: 'check-circle',
+            popupClass: 'bg-success text-white',
+            statusText: '正常运行'
+        },
+        warning: {
+            color: 'orange',
+            icon: 'exclamation-triangle',
+            popupClass: 'bg-warning text-dark',
+            statusText: '警告状态'
+        },
+        fault: {
+            color: 'red',
+            icon: 'times-circle',
+            popupClass: 'bg-danger text-white',
+            statusText: '故障状态'
+        },
+        offline: {
+            color: 'gray',
+            icon: 'circle-o',
+            popupClass: 'bg-secondary text-white',
+            statusText: '离线状态'
+        }
+    };
+
+    // 设备类型图标映射
+    const typeIcons = {
+        "传感器": "fa-microchip",
+        "控制器": "fa-cogs",
+        "执行器": "fa-play",
+        "服务器": "fa-server"
+    };
+
+    // 病虫害诊断信息
+    const diseaseInfo = {
+        "苹果黑星病": {
+            diagnosis: "苹果黑星病是由真菌Venturia inaequalis引起的，主要危害苹果叶片和果实。病斑初期为淡黄色，后期变为黑色绒状霉层。",
+            treatment: "1. 清除病叶、病果，减少病原菌越冬基数\n2. 春季萌芽前喷施石硫合剂\n3. 发病初期喷施苯醚甲环唑、戊唑醇等杀菌剂\n4. 选择抗病品种种植"
+        },
+        "苹果黑腐病": {
+            diagnosis: "苹果黑腐病是由真菌Botryosphaeria obtusa引起的，主要危害果实、叶片和枝条。病斑呈褐色至黑色，有同心轮纹。",
+            treatment: "1. 清除病枝、病果，减少病原\n2. 加强果园管理，增强树势\n3. 果实套袋保护\n4. 喷施代森锰锌、嘧菌酯等杀菌剂"
+        },
+        "苹果雪松锈病": {
+            diagnosis: "苹果雪松锈病是由真菌Gymnosporangium yamadae引起的转主寄生菌，需在苹果和桧柏上交替寄生完成生活史。",
+            treatment: "1. 清除果园周围的桧柏等转主寄主\n2. 早春喷施三唑酮或戊唑醇\n3. 发病初期喷施嘧菌酯、吡唑醚菌酯\n4. 加强果园通风透光"
+        },
+        "玉米灰斑病": {
+            diagnosis: "玉米灰斑病是由真菌Cercospora zeae-maydis引起的叶部病害，病斑呈长条形，灰褐色，严重时导致叶片枯死。",
+            treatment: "1. 选用抗病品种\n2. 合理密植，保证通风透光\n3. 发病初期喷施苯醚甲环唑、嘧菌酯\n4. 收获后深翻土地，减少病原"
+        },
+        "玉米普通锈病": {
+            diagnosis: "玉米普通锈病是由真菌Puccinia sorghi引起的，病斑呈圆形或椭圆形，红褐色，表皮破裂后散出铁锈色粉末。",
+            treatment: "1. 选用抗病品种\n2. 合理施肥，增施磷钾肥\n3. 发病初期喷施三唑酮、戊唑醇\n4. 清除田间病残体"
+        },
+        "番茄细菌性斑点病": {
+            diagnosis: "番茄细菌性斑点病是由细菌Pseudomonas syringae pv. tomato引起的，叶片上出现水渍状小斑点，后期变为褐色坏死斑。",
+            treatment: "1. 选用无病种子，种子消毒\n2. 轮作倒茬，避免连作\n3. 发病初期喷施氢氧化铜、春雷霉素\n4. 控制田间湿度，避免大水漫灌"
+        },
+        "番茄晚疫病": {
+            diagnosis: "番茄晚疫病是由真菌Phytophthora infestans引起的毁灭性病害，叶片出现水渍状病斑，湿度大时产生白色霉层。",
+            treatment: "1. 选用抗病品种\n2. 高畦栽培，合理密植\n3. 发病初期喷施烯酰吗啉、氟噻唑吡乙酮\n4. 及时清除中心病株"
+        },
+        "玉米健康": {
+            diagnosis: "玉米植株生长健康，无病虫害迹象。叶片呈鲜绿色，茎秆粗壮，根系发达。",
+            treatment: "1. 保持合理密植\n2. 定期施肥，保证营养供应\n3. 注意水分管理，避免旱涝\n4. 定期巡查，预防病虫害发生"
+        },
+        "苹果健康": {
+            diagnosis: "苹果树生长旺盛，叶片浓绿有光泽，无病虫害迹象。果实发育良好，树势强壮。",
+            treatment: "1. 合理修剪，保持通风透光\n2. 定期施肥，保证营养均衡\n3. 注意水分管理，避免干旱\n4. 定期巡查，预防病虫害发生"
+        }
+    };
+
+    // 全局变量
+    let map;
+    let deviceMarkers = L.featureGroup();
+    let villageLayer;
+    let currentDevice = null;
+    let currentStream = null;
+    const detectionModal = new bootstrap.Modal(document.getElementById('detectionModal'));
+    const notificationToast = new bootstrap.Toast(document.querySelector('.toast'));
+    let isDeviceInfoShown = false; // 记录设备信息面板是否已显示
+
+    // 初始化地图
+    function initMap() {
+        try {
+            // 创建地图实例，中心设为小村中心，缩放级别调整为17级以更清晰显示缩小后的区域
+            map = L.map('map').setView([27.460, 120.381], 18);
+
+            // 添加地图图层（高德地图）
+            L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&size=1&scl=1&style=7', {
+                subdomains: '1234',
+                attribution: '高德地图',
+                maxZoom: 19
+            }).addTo(map);
+
+            // 添加控制按钮事件
+            document.getElementById('locate').addEventListener('click', () => map.locate({setView: true, maxZoom: 17}));
+            document.getElementById('showDevices').addEventListener('click', showAllDevices);
+
+            // 查看农田按钮事件
+            viewFarmBtn.addEventListener('click', () => {
+                farmModal.classList.add('active');
+                document.body.style.overflow = 'hidden'; // 防止背景滚动
+            });
+
+            // 模拟数据加载延迟
+            setTimeout(() => {
+                addVillageBoundary();
+                addDeviceMarkers();
+                loadingOverlay.style.display = 'none';
+            }, 800);
+
+            console.log('地图初始化成功');
+        } catch (error) {
+            console.error('地图初始化失败:', error);
+            loadingOverlay.innerHTML = `
+                    <div class="text-center text-danger">
+                        <i class="fa fa-exclamation-circle" style="font-size: 24px; margin-bottom: 10px;"></i>
+                        <h4>地图加载失败</h4>
+                        <p>${error.message}</p>
+                        <p class="mt-2">请检查您的网络连接或稍后重试</p>
+                    </div>
+                `;
+        }
+    }
+
+    // 添加小村边界
+    function addVillageBoundary() {
+        villageLayer = L.polygon(villageBoundary, {
+            className: 'village-boundary',
+            interactive: false
+        }).addTo(map);
+    }
+
+    // 添加设备标记到地图
+    function addDeviceMarkers() {
+        // 清除现有标记
+        if (deviceMarkers) {
+            map.removeLayer(deviceMarkers);
+        }
+        deviceMarkers = L.featureGroup();
+
+        // 添加设备标记
+        deviceData.forEach(device => {
+            const style = statusStyles[device.status] || statusStyles.normal;
+            const typeIcon = typeIcons[device.type] || 'fa-question-circle';
+
+            // 创建自定义图标
+            const icon = L.AwesomeMarkers.icon({
+                icon: `${style.icon} ${typeIcon}`,
+                prefix: 'fa',
+                markerColor: style.color,
+                iconColor: 'white',
+                extraClasses: 'fa-lg'
+            });
+
+            // 创建标记
+            const marker = L.marker([device.lat, device.lng], { icon: icon }).addTo(deviceMarkers);
+
+            // 自定义弹窗内容
+            const popupContent = `
+                    <div class="device-popup ${style.popupClass}">
+                        <div class="popup-header">
+                            <div class="status-dot" style="background-color: ${style.color}"></div>
+                            <h5 class="mb-0">${device.name}</h5>
+                        </div>
+                        <p class="mb-1"><i class="fa fa-id-card-o mr-2"></i> 设备ID: ${device.id}</p>
+                        <p class="mb-1"><i class="fa fa-map-marker mr-2"></i> 坐标: ${device.lat.toFixed(6)}, ${device.lng.toFixed(6)}</p>
+                        <p class="mb-1"><i class="fa fa-building mr-2"></i> 位置: ${device.location}</p>
+                        <p class="mb-1"><i class="fa ${typeIcon} mr-2"></i> 类型: ${device.type}</p>
+                        <p class="mb-0"><i class="fa fa-circle mr-2"></i> 状态:
+                            <span class="badge ${style.popupClass}">${style.statusText}</span>
+                        </p>
+                        <div class="d-grid mt-2">
+                            <button class="btn btn-sm btn-outline-light detect-btn" data-device-id="${device.id}">
+                                <i class="fa fa-bug"></i> 病虫害检测
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+            marker.bindPopup(popupContent);
+
+            // 添加点击事件监听
+            marker.on('popupopen', function() {
+                document.querySelector('.detect-btn').addEventListener('click', function() {
+                    currentDevice = device;
+                    showDetectionModal();
+                    map.closePopup();
+                });
+            });
+
+            // 添加点击标记事件（只显示一次设备信息）
+            marker.on('click', function() {
+                if (!isDeviceInfoShown) { // 只有未显示时才显示
+                    showDeviceInfo(device);
+                    isDeviceInfoShown = true;
+                }
+            });
+        });
+
+        // 添加标记组到地图
+        map.addLayer(deviceMarkers);
+
+        // 如果有设备，自动调整视图显示所有设备
+        if (deviceData.length > 0) {
+            deviceMarkers.addTo(map).bringToFront();
+            map.fitBounds(deviceMarkers.getBounds(), {padding: [20, 20]});
+        }
+    }
+
+    // 显示设备信息面板
+    function showDeviceInfo(device) {
+        const style = statusStyles[device.status] || statusStyles.normal;
+
+        document.getElementById('infoName').textContent = device.name;
+        document.getElementById('infoId').textContent = device.id;
+        document.getElementById('infoStatus').innerHTML = `<span class="badge ${style.popupClass}">${style.statusText}</span>`;
+        document.getElementById('infoType').textContent = device.type;
+        document.getElementById('infoLocation').textContent = device.location;
+        document.getElementById('infoCoords').textContent = `${device.lat.toFixed(6)}, ${device.lng.toFixed(6)}`;
+
+        const panel = document.getElementById('deviceInfoPanel');
+        panel.style.display = 'block';
+
+        // 更新检测按钮
+        document.getElementById('detectFromPanel').onclick = function() {
+            currentDevice = device;
+            showDetectionModal();
+        };
+    }
+
+    // 显示所有设备
+    function showAllDevices() {
+        if (deviceMarkers) {
+            map.fitBounds(deviceMarkers.getBounds(), {padding: [20, 20]});
+        }
+    }
+
+    // 显示病虫害检测模态框
+    function showDetectionModal() {
+        resetDetectionUI();
+        detectionModal.show();
+    }
+
+    // 重置检测UI
+    function resetDetectionUI() {
+        document.getElementById('uploadPlaceholder').style.display = 'flex';
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('imagePreview').src = '';
+        document.getElementById('cameraPreview').style.display = 'none';
+        document.getElementById('captureBtn').style.display = 'none';
+        document.getElementById('retakeBtn').style.display = 'none';
+        document.getElementById('detectBtn').style.display = 'none';
+        document.getElementById('resultContainer').style.display = 'none';
+        document.getElementById('startCameraBtn').style.display = 'inline-block';
+        document.getElementById('uploadImageBtn').style.display = 'inline-block';
+
+        // 关闭摄像头
+        stopCamera();
+    }
+
+    // 初始化检测功能
+    function initDetection() {
+        // 上传图片按钮
+        document.getElementById('uploadImageBtn').addEventListener('click', () => {
+            document.getElementById('imageUpload').click();
+        });
+
+        // 图片上传处理
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('uploadPlaceholder').style.display = 'none';
+                    const imgPreview = document.getElementById('imagePreview');
+                    imgPreview.src = e.target.result;
+                    imgPreview.style.display = 'block';
+                    document.getElementById('detectBtn').style.display = 'block';
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        // 启动摄像头
+        document.getElementById('startCameraBtn').addEventListener('click', startCamera);
+
+        // 拍照按钮
+        document.getElementById('captureBtn').addEventListener('click', captureImage);
+
+        // 重拍按钮
+        document.getElementById('retakeBtn').addEventListener('click', () => {
+            document.getElementById('cameraPreview').style.display = 'block';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('captureBtn').style.display = 'block';
+            document.getElementById('retakeBtn').style.display = 'none';
+            document.getElementById('detectBtn').style.display = 'none';
+        });
+
+        // 检测按钮
+        document.getElementById('detectBtn').addEventListener('click', detectDisease);
+
+        // 新的检测按钮
+        document.getElementById('newDetectionBtn').addEventListener('click', resetDetectionUI);
+
+        // 下载报告按钮
+        document.getElementById('downloadReportBtn').addEventListener('click', downloadReport);
+    }
+
+    // 启动摄像头
+    async function startCamera() {
+        try {
+            document.getElementById('uploadPlaceholder').style.display = 'none';
+
+            const constraints = {
+                video: {
+                    facingMode: 'environment', // 优先使用后置摄像头
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            currentStream = stream;
+
+            const cameraPreview = document.getElementById('cameraPreview');
+            cameraPreview.srcObject = stream;
+            cameraPreview.style.display = 'block';
+
+            document.getElementById('startCameraBtn').style.display = 'none';
+            document.getElementById('uploadImageBtn').style.display = 'none';
+            document.getElementById('captureBtn').style.display = 'block';
+            document.getElementById('retakeBtn').style.display = 'none';
+            document.getElementById('detectBtn').style.display = 'none';
+        } catch (err) {
+            console.error('摄像头访问失败:', err);
+            alert('无法访问摄像头，请确保您已授予摄像头权限。');
+        }
+    }
+
+    // 停止摄像头
+    function stopCamera() {
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+    }
+
+    // 拍照
+    function captureImage() {
+        const cameraPreview = document.getElementById('cameraPreview');
+        const canvas = document.getElementById('captureCanvas');
+        const imgPreview = document.getElementById('imagePreview');
+
+        canvas.width = cameraPreview.videoWidth;
+        canvas.height = cameraPreview.videoHeight;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
+
+        imgPreview.src = canvas.toDataURL('image/jpeg');
+        imgPreview.style.display = 'block';
+        cameraPreview.style.display = 'none';
+
+        document.getElementById('captureBtn').style.display = 'none';
+        document.getElementById('retakeBtn').style.display = 'block';
+        document.getElementById('detectBtn').style.display = 'block';
+
+        // 关闭摄像头
+        stopCamera();
+    }
+
+    // 检测病虫害
+    async function detectDisease() {
+        const imgPreview = document.getElementById('imagePreview');
+        const detectionLoading = document.getElementById('detectionLoading');
+        const detectBtn = document.getElementById('detectBtn');
+
+        // 显示加载状态
+        detectBtn.style.display = 'none';
+        detectionLoading.style.display = 'block';
+
+        try {
+            // 从预览图像获取数据URL
+            const imageData = imgPreview.src;
+
+            // 发送到后端进行预测（这里使用模拟数据）
+            const mockResult = getMockDetectionResult();
+            showDetectionResult(mockResult);
+
+        } catch (error) {
+            console.error('检测失败:', error);
+            // 模拟结果作为备选方案
+            const mockResult = getMockDetectionResult();
+            showDetectionResult(mockResult);
+        } finally {
+            detectionLoading.style.display = 'none';
+        }
+    }
+
+    // 获取模拟检测结果
+    function getMockDetectionResult() {
+        const diseases = Object.keys(diseaseInfo);
+        const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
+        const confidence = (Math.random() * 50 + 50).toFixed(1); // 50-100%的置信度
+
+        return {
+            disease: randomDisease,
+            confidence: confidence,
+            diagnosis: diseaseInfo[randomDisease].diagnosis,
+            treatment: diseaseInfo[randomDisease].treatment
+        };
+    }
+
+    // 显示检测结果
+    function showDetectionResult(result) {
+        document.getElementById('diseaseName').textContent = result.disease;
+        document.getElementById('confidence').textContent = `置信度: ${result.confidence}%`;
+        document.getElementById('diagnosisText').textContent = result.diagnosis;
+        document.getElementById('treatmentText').textContent = result.treatment;
+        document.getElementById('resultContainer').style.display = 'block';
+    }
+
+    // 下载报告
+    function downloadReport() {
+        const diseaseName = document.getElementById('diseaseName').textContent;
+        const confidence = document.getElementById('confidence').textContent;
+        const diagnosis = document.getElementById('diagnosisText').textContent;
+        const treatment = document.getElementById('treatmentText').textContent;
+
+        try {
+            // 使用jsPDF创建PDF报告
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // 添加标题
+            doc.setFontSize(20);
+            doc.text('病虫害检测报告', 105, 20, null, null, 'center');
+
+            // 添加设备信息
+            doc.setFontSize(12);
+            doc.setTextColor(100);
+            doc.text(`检测设备: ${currentDevice.name} (ID: ${currentDevice.id})`, 20, 35);
+            doc.text(`设备位置: ${currentDevice.location}`, 20, 42);
+            doc.text(`检测时间: ${new Date().toLocaleString()}`, 20, 49);
+
+            // 添加分隔线
+            doc.setDrawColor(200);
+            doc.line(20, 55, 190, 55);
+
+            // 添加检测结果
+            doc.setFontSize(16);
+            doc.setTextColor(0);
+            doc.text('检测结果', 20, 65);
+
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 255);
+            doc.text(`病害名称: ${diseaseName}`, 20, 75);
+            doc.setTextColor(0, 150, 0);
+            doc.text(confidence, 20, 82);
+
+            // 添加诊断说明
+            doc.setFontSize(16);
+            doc.setTextColor(0);
+            doc.text('诊断说明', 20, 95);
+
+            doc.setFontSize(12);
+            doc.setTextColor(0);
+            doc.text(diagnosis, 20, 105, { maxWidth: 170 });
+
+            // 添加防治建议
+            doc.setFontSize(16);
+            doc.setTextColor(0);
+            doc.text('防治建议', 20, 140);
+
+            doc.setFontSize(12);
+            doc.setTextColor(0);
+            doc.text(treatment, 20, 150, { maxWidth: 170 });
+
+            // 保存PDF
+            doc.save(`病虫害检测报告_${diseaseName}_${new Date().getTime()}.pdf`);
+
+            // 显示成功通知
+            document.querySelector('.toast-body').textContent = "报告已成功生成并下载！";
+            notificationToast.show();
+
+        } catch (error) {
+            console.error('生成报告失败:', error);
+            alert('生成报告失败: ' + error.message);
+        }
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        initDetection();
+
+        // 点击弹窗外部关闭弹窗
+        farmModal.addEventListener('click', (e) => {
+            if (e.target === farmModal) {
+                farmModal.classList.remove('active');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        });
+
+        // 按ESC键关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && farmModal.classList.contains('active')) {
+                farmModal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // 地图点击关闭设备信息面板（重置显示状态）
+        map.on('click', function() {
+            document.getElementById('deviceInfoPanel').style.display = 'none';
+            isDeviceInfoShown = false;
+        });
+    });
+
+    // 窗口大小改变时调整地图高度
+    window.addEventListener('resize', () => {
+        if (map) {
+            map.invalidateSize();
+        }
+    });
+</script>
+</body>
+</html>
