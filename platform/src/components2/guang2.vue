@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div ref="chartRef" style="width: 610px; height: 400px;position: relative;top: 20px;left: 5px"></div>
+  <div >
+    <div ref="chartRef" style="width: 610px; height: 400px;position: relative;top: 10px;left: 23px"></div>
     <div v-if="error" class="error-message">
       Error loading/updating chart: {{ error }}
     </div>
@@ -74,6 +74,7 @@ const initChart = () => {
 
   const option = {
     title: {text: '光照强度与红蓝光比例'},
+
     tooltip: {
       trigger: 'axis',
       axisPointer: {type: 'cross', label: {backgroundColor: '#283b56'}},
@@ -179,6 +180,7 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   background-color: #fef0f0;
   position: relative;
+
 
 }
 </style>

@@ -24,7 +24,7 @@ watch(collapsed, (val) => {
       <Sidebar :collapsed="collapsed" />
     </aside>
     <main class="main-content">
-      <HeaderBar :collapsed="collapsed" :toggleSidebar="toggleSidebar" />
+      <HeaderBar :collapsed="collapsed" :toggleSidebar="toggleSidebar"class="ll"/>
       <section class="main-section">
         <RouterView />
       </section>
@@ -33,6 +33,10 @@ watch(collapsed, (val) => {
 </template>
 
 <style scoped>
+*{
+  margin: 0;
+  padding: 0;
+}
 .layout-root {
   display: flex;
 
@@ -40,16 +44,19 @@ watch(collapsed, (val) => {
   background: #f5f7fa;
 }
 .sidebar {
+  width: 210px!important;
+  flex: 0 0 210px!important;
   transition: width 0.32s cubic-bezier(.42,0,.58,1);
   min-width: 0;
   z-index: 2;
 }
 .main-content {
   flex: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-    
+
 }
 .main-section {
   flex: 1;
@@ -59,6 +66,8 @@ watch(collapsed, (val) => {
   /* 美化滚动条 */
   scrollbar-width: thin;
   scrollbar-color: #b3d4fc #f5f7fa;
+
+
 }
 .main-section::-webkit-scrollbar {
   width: 8px;
@@ -76,4 +85,4 @@ watch(collapsed, (val) => {
   .sidebar { width: 56px !important; }
   .main-section { padding: 16px 8px; }
 }
-</style> 
+</style>

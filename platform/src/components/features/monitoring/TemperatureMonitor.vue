@@ -7,446 +7,386 @@
           <h3 class="card-title">温度监控</h3>
           <p class="card-subtitle">实时监测环境温度变化</p>
         </div>
-        <div class="device-info">
-          <span class="device-id">设备: {{ deviceId }}</span>
-          <span class="update-time">{{ lastUpdateTime }}</span>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button 
-          class="action-btn refresh-btn" 
-          @click="refreshData"
-          :class="{ loading: isLoading }"
-          :disabled="isLoading"
-        >
-          <RefreshCw :size="16" />
-          <span>刷新</span>
-        </button>
       </div>
     </div>
 
-    <!-- 主要内容 -->
+    <!-- 主要内容 - 替换为温湿度趋势图 -->
     <div class="monitor-content">
-      <!-- 当前值显示 -->
-      <div class="current-value-section">
-        <div class="value-display">
-          <div class="value-container">
-            <span class="value">{{ currentTemperature }}</span>
-            <span class="unit">°C</span>
-          </div>
-          <div class="value-label">当前温度</div>
-        </div>
-        
-        <div class="status-section">
-          <div class="status-indicator" :class="statusClass">
-            <div class="status-dot"></div>
-            <span class="status-text">{{ statusText }}</span>
-          </div>
-          <div class="threshold-info">
-            <span class="threshold-label">阈值:</span>
-            <span class="threshold-value">警告 {{ threshold.warning }}°C / 危险 {{ threshold.critical }}°C</span>
+      <div class="chart-wrapper">
+        <div class="header">
+          <h2 class="chart-title"></h2>
+          <div class="select-group">
+            <select v-model="selectedRange" @change="handleRangeChange" class="data-selector">
+              <option value="today">今日</option>
+              <option value="yesterday">昨日</option>
+            </select>
+            <select v-model="selectedDevice" @change="handleRangeChange" class="data-selector">
+              <option v-for="device in devices" :key="device.id" :value="device.id">
+                {{ device.name }}
+              </option>
+            </select>
           </div>
         </div>
-      </div>
-
-      <!-- 图表区域 -->
-      <div class="chart-section">
-        <div class="chart-header">
-          <h4 class="chart-title">24小时温度趋势</h4>
-          <div class="chart-legend">
-            <span class="legend-item">
-              <span class="legend-dot normal"></span>
-              <span>正常</span>
-            </span>
-            <span class="legend-item">
-              <span class="legend-dot warning"></span>
-              <span>警告</span>
-            </span>
-            <span class="legend-item">
-              <span class="legend-dot critical"></span>
-              <span>危险</span>
-            </span>
-          </div>
+        <div v-if="isLoading" class="loading">
+          <i class="fa fa-spinner fa-spin mr-2"></i> Loading...
         </div>
-        <div class="chart-container">
-          <v-chart 
-            class="chart" 
-            :option="chartOption" 
-            :autoresize="true"
-            :loading="isLoading"
-          />
+        <div v-else-if="error" class="error">
+          <i class="fa fa-exclamation-triangle mr-2"></i> {{ error }}
+          <div v-if="errorDetails" class="error-details">{{ errorDetails }}</div>
         </div>
-      </div>
-
-      <!-- 告警列表 -->
-      <div class="alerts-section" v-if="alerts.length > 0">
-        <div class="alerts-header">
-          <h4 class="alerts-title">告警记录</h4>
-          <span class="alerts-count">{{ alerts.length }}条</span>
+        <div v-else-if="!hasData" class="no-data">
+          <i class="fa fa-info-circle mr-2"></i> 所选时间范围或设备无数据
         </div>
-        <div class="alerts-list">
-          <div 
-            v-for="alert in alerts.slice(0, 3)" 
-            :key="alert.id" 
-            class="alert-item"
-            :class="`alert-${alert.level}`"
-          >
-            <div class="alert-icon">
-              <AlertTriangle v-if="alert.level === 'critical'" :size="16" />
-              <AlertCircle v-else-if="alert.level === 'warning'" :size="16" />
-              <Info v-else :size="16" />
-            </div>
-            <div class="alert-content">
-              <div class="alert-message">{{ alert.message }}</div>
-              <div class="alert-time">{{ formatTime(alert.timestamp) }}</div>
-            </div>
-          </div>
-        </div>
+        <div ref="chartContainer" v-else class="chart-container"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
-import { RefreshCw, AlertTriangle, AlertCircle, Info } from 'lucide-vue-next';
-import VChart from 'vue-echarts';
-import { use } from 'echarts/core';
-import { CanvasRenderer } from 'echarts/renderers';
-import { LineChart } from 'echarts/charts';
-import {
-  TitleComponent,
-  TooltipComponent,
-  GridComponent,
-  LegendComponent,
-  MarkLineComponent
-} from 'echarts/components';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { RefreshCw } from 'lucide-vue-next';
+import axios from 'axios';
+import * as echarts from 'echarts';
 
-// 注册 ECharts 组件
-use([
-  CanvasRenderer,
-  LineChart,
-  TitleComponent,
-  TooltipComponent,
-  GridComponent,
-  LegendComponent,
-  MarkLineComponent
-]);
-
-interface TemperatureAlert {
-  id: string;
-  level: 'warning' | 'critical' | 'info';
-  message: string;
-  timestamp: Date;
-  icon: string;
-}
-
-interface Props {
-  deviceId?: string;
-  threshold?: {
-    warning: number;
-    critical: number;
-  };
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  deviceId: 'TEMP-001',
-  threshold: () => ({
-    warning: 30,
-    critical: 35
-  })
-});
-
-const emit = defineEmits<{
-  alert: [alert: TemperatureAlert];
-  dataUpdate: [temperature: number];
-}>();
-
-// 响应式数据
-const currentTemperature = ref(25.5);
-const isLoading = ref(false);
-const alerts = ref<TemperatureAlert[]>([]);
+// 设备信息
+const deviceId = ref('TEMP-001');
 const lastUpdateTime = ref('刚刚更新');
-const temperatureHistory = ref<number[]>([]);
-const timeLabels = ref<string[]>([]);
+const isLoading = ref(false);
 
-// 计算属性
-const statusClass = computed(() => {
-  const temp = parseFloat(currentTemperature.value.toString());
-  if (temp >= props.threshold.critical) return 'status-critical';
-  if (temp >= props.threshold.warning) return 'status-warning';
-  return 'status-normal';
-});
+// 图表相关变量
+const chartContainer = ref(null);
+const selectedRange = ref('today');
+const selectedDevice = ref(1);
+const devices = ref([
+  { id: 1, name: '设备A' },
+  { id: 2, name: '设备B' },
+  { id: 3, name: '设备C' },
+  { id: 4, name: '设备D' },
+  { id: 5, name: '设备E' },
+  { id: 6, name: '中心设备' }
+]);
+const serverData = ref({ temperatureData: [], humidityData: [] });
+const error = ref('');
+const errorDetails = ref('');
+const hasData = ref(true);
+let chart: echarts.ECharts | null = null;
 
-const statusText = computed(() => {
-  const temp = parseFloat(currentTemperature.value.toString());
-  if (temp >= props.threshold.critical) return '温度过高';
-  if (temp >= props.threshold.warning) return '温度偏高';
-  return '温度正常';
-});
-
-// ECharts 配置
-const chartOption = computed(() => {
-  const data = temperatureHistory.value;
-  const times = timeLabels.value;
-  
-  return {
-    title: {
-      text: '24小时温度趋势',
-      left: 'center',
-      top: 10,
-      textStyle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#333'
-      }
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: 'rgba(0, 0, 0, 0.1)',
-      borderWidth: 1,
-      textStyle: {
-        color: '#333'
-      },
-      formatter: function(params: any) {
-        const data = params[0];
-        return `${data.name}<br/>温度: ${data.value}°C`;
-      }
-    },
-    grid: {
-      left: '10%',
-      right: '10%',
-      top: '20%',
-      bottom: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: times,
-      boundaryGap: false,
-      axisLine: {
-        lineStyle: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        }
-      },
-      axisTick: {
-        show: false
-      },
-      axisLabel: {
-        color: '#666',
-        fontSize: 11
-      }
-    },
-    yAxis: {
-      type: 'value',
-      min: 0,
-      max: 50,
-      axisLine: {
-        lineStyle: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        }
-      },
-      axisTick: {
-        show: false
-      },
-      axisLabel: {
-        color: '#666',
-        fontSize: 11,
-        formatter: '{value}°C'
-      },
-      splitLine: {
-        lineStyle: {
-          color: 'rgba(0, 0, 0, 0.06)',
-          type: 'dashed'
-        }
-      }
-    },
-    series: [
-      {
-        name: '温度',
-        type: 'line',
-        data: data,
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 6,
-        lineStyle: {
-          color: '#667eea',
-          width: 3
-        },
-        itemStyle: {
-          color: '#667eea',
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(102, 126, 234, 0.3)' },
-              { offset: 1, color: 'rgba(102, 126, 234, 0.05)' }
-            ]
-          }
-        },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          lineStyle: {
-            color: '#faad14',
-            type: 'dashed',
-            width: 2
-          },
-          data: [
-            {
-              yAxis: props.threshold.warning,
-              label: {
-                show: true,
-                position: 'end',
-                formatter: '警告阈值',
-                color: '#faad14',
-                fontSize: 11,
-                fontWeight: 'bold'
-              }
-            },
-            {
-              yAxis: props.threshold.critical,
-              lineStyle: {
-                color: '#ff4d4f'
-              },
-              label: {
-                show: true,
-                position: 'end',
-                formatter: '危险阈值',
-                color: '#ff4d4f',
-                fontSize: 11,
-                fontWeight: 'bold'
-              }
-            }
-          ]
-        }
-      }
-    ]
-  };
-});
-
-// 方法
-const generateRandomTemperature = () => {
-  const baseTemp = 25;
-  const variation = Math.random() * 10 - 5;
-  return Math.round((baseTemp + variation) * 10) / 10;
+// 格式化日期
+const formatDate = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 };
 
-const updateTemperatureHistory = (newTemp: number) => {
-  temperatureHistory.value.push(newTemp);
-  // 保持24小时的数据点（每5分钟一个数据点，共288个点）
-  if (temperatureHistory.value.length > 288) {
-    temperatureHistory.value.shift();
-  }
-  
-  // 更新时间标签
-  updateTimeLabels();
+// 获取时间范围
+const getTimeRange = () => {
+  const today = new Date('2025-05-27');
+  const yesterday = new Date('2025-05-26');
+
+  return selectedRange.value === 'today' ? [
+    `${formatDate(today)} 00:00:00`,
+    `${formatDate(today)} 23:59:59`
+  ] : [
+    `${formatDate(yesterday)} 00:00:00`,
+    `${formatDate(yesterday)} 23:59:59`
+  ];
 };
 
-const updateTimeLabels = () => {
-  const labels = [];
-  const now = new Date();
-  for (let i = 23; i >= 0; i--) {
-    const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-    labels.push(time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
-  }
-  timeLabels.value = labels;
-};
+// 获取数据
+const fetchData = async () => {
+  isLoading.value = true;
+  error.value = '';
+  errorDetails.value = '';
+  hasData.value = true;
 
-const fetchTemperatureData = async () => {
   try {
-    isLoading.value = true;
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // 生成新的温度数据
-    const newTemp = generateRandomTemperature();
-    
-    currentTemperature.value = newTemp;
-    updateTemperatureHistory(newTemp);
-    emit('dataUpdate', newTemp);
-    
-    // 更新最后更新时间
-    lastUpdateTime.value = new Date().toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit'
+    const [startTime, endTime] = getTimeRange();
+    const response = await axios.get('http://localhost:5000/api/weather/data', {
+      params: { start_time: startTime, end_time: endTime }
     });
-    
-    // 检查是否需要生成警报
-    checkAlerts(newTemp);
-    
-  } catch (error) {
-    console.error('获取温度数据失败:', error);
+
+    if (!response.data.success) throw new Error(response.data.message);
+
+    const deviceData = response.data.data.filter((item: any) => {
+      if (item.device_id === 5) {
+        return item.temperature !== -999;
+      }
+      return item.device_id === selectedDevice.value;
+    });
+
+    if (deviceData.length === 0) {
+      throw new Error(selectedDevice.value === 5 ? '设备离线，无有效数据' : '无有效数据');
+    }
+
+    const temperatureData: [number, number | null][] = [];
+    const humidityData: [number, number | null][] = [];
+
+    deviceData.forEach((item: any) => {
+      const timestamp = new Date(item.timestamp).getTime();
+
+      let temp = parseFloat(item.temperature);
+      if (isNaN(temp) || temp < -20 || temp > 50) temp = null;
+      else temp = parseFloat(temp.toFixed(1));
+      temperatureData.push([timestamp, temp]);
+
+      let hum = parseFloat(item.humidity);
+      if (isNaN(hum) || hum < 0 || hum > 100) hum = null;
+      else hum = parseFloat(hum.toFixed(1));
+      humidityData.push([timestamp, hum]);
+    });
+
+    serverData.value = {
+      temperatureData,
+      humidityData
+    };
+    await nextTick();
+    initChart();
+
+  } catch (err: any) {
+    console.error('数据获取失败:', err);
+    error.value = err.message || '获取数据失败，请检查网络或时间范围';
+    errorDetails.value = err.stack || '';
+    hasData.value = false;
+    if (chart) chart.dispose();
   } finally {
     isLoading.value = false;
   }
 };
 
-const checkAlerts = (temperature: number) => {
-  if (temperature >= props.threshold.critical) {
-    const alert: TemperatureAlert = {
-      id: Date.now().toString(),
-      level: 'critical',
-      message: `温度过高: ${temperature}°C，请立即检查设备`,
-      timestamp: new Date(),
-      icon: '🔥'
-    };
-    alerts.value.unshift(alert);
-    emit('alert', alert);
-  } else if (temperature >= props.threshold.warning) {
-    const alert: TemperatureAlert = {
-      id: Date.now().toString(),
-      level: 'warning',
-      message: `温度偏高: ${temperature}°C，请注意监控`,
-      timestamp: new Date(),
-      icon: '⚠️'
-    };
-    alerts.value.unshift(alert);
-    emit('alert', alert);
-  }
+// 初始化图表（优化样式）
+const initChart = () => {
+  if (!chartContainer.value ||
+      serverData.value.temperatureData.length === 0 ||
+      serverData.value.humidityData.length === 0) return;
+
+  if (chart) chart.dispose();
+  chart = echarts.init(chartContainer.value);
+
+  const option = {
+    legend: {
+      top: 'bottom',
+      data: ['温度', '湿度'],
+      textStyle: {
+        fontSize: 12
+      }
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e0e0e0',
+      borderWidth: 1,
+      padding: 10,
+      formatter: (params: any) => {
+        // 用 Map 对数据分组，key: 时间 + 系列名，确保同一时间、同一系列只显示一条
+        const uniqueParamsMap = new Map();
+        params.forEach((item: any) => {
+          const date = new Date(item.value[0]);
+          const timeKey = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}_${item.seriesName}`;
+          if (!uniqueParamsMap.has(timeKey)) {
+            uniqueParamsMap.set(timeKey, item);
+          }
+        });
+        // 将 Map 转成数组，按时间排序（可选，保持原顺序也可）
+        const uniqueParams = Array.from(uniqueParamsMap.values()).sort((a: any, b: any) => {
+          return new Date(a.value[0]).getTime() - new Date(b.value[0]).getTime();
+        });
+        // 渲染去重后的数据
+        return uniqueParams.map((item: any) => {
+          const date = new Date(item.value[0]);
+          const time = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+          return `
+        <div style="margin: 5px 0;">
+          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${item.color}; margin-right: 5px;"></span>
+          <span style="font-weight: 500;">${item.seriesName}</span>: ${item.value[1] !== null ? item.value[1] : '无数据'} ${item.seriesIndex === 0 ? '°C' : '%'}
+          <div style="color: #999; margin-top: 2px;">${time}</div>
+        </div>
+      `;
+        }).join('');
+      }
+    },
+    dataZoom: [
+      {
+        type: 'inside',
+        throttle: 50,
+        xAxisIndex: 0
+      }
+    ],
+    grid: {
+      top: 60,
+      left: 15,
+      right: 15,
+      height: 260
+    },
+    xAxis: {
+      type: 'time',
+      axisPointer: {
+        snap: true,
+        lineStyle: {
+          color: '#7581BD',
+          width: 2
+        },
+        label: {
+          show: true,
+          formatter: function (params: any) {
+            const date = new Date(params.value);
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+          },
+          backgroundColor: '#7581BD'
+        },
+        handle: {
+          show: true,
+          color: '#7581BD'
+        }
+      },
+      splitLine: {
+        show: false
+      },
+      axisLabel: {
+        formatter: function (value: number) {
+          const date = new Date(value);
+          return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+      }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '温度 ',
+        nameTextStyle: {
+          color: '#0F73FE',
+          fontSize: 12
+        },
+        axisTick: {
+          inside: true
+        },
+        splitLine: {
+          show: false
+        },
+        axisLabel: {
+          inside: true,
+          formatter: '{value}\n'
+        },
+        min: 10,
+        max: 40
+      },
+      {
+        type: 'value',
+        name: '湿度 ',
+        nameTextStyle: {
+          color: '#F2597F',
+          fontSize: 12
+        },
+        axisTick: {
+          inside: true
+        },
+        splitLine: {
+          show: false
+        },
+        axisLabel: {
+          inside: true,
+          formatter: '{value}\n'
+        },
+        min: 0,
+        max: 100
+      }
+    ],
+    series: [
+      {
+        name: '湿度',
+        type: 'line',
+        data: serverData.value.humidityData,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 5,
+        itemStyle: {
+          color: '#F2597F'
+        },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(242, 89, 127, 0.8)' },
+            { offset: 1, color: 'rgba(242, 89, 127, 0.1)' }
+          ])
+        },
+        connectNulls: true,
+        yAxisIndex: 1,
+        // 添加 emphasis 配置，让点击等交互时样式不变
+        emphasis: {
+          itemStyle: {
+            color: '#F2597F' // 和正常状态的 itemStyle.color 一致
+          },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(242, 89, 127, 0.8)' },
+              { offset: 1, color: 'rgba(242, 89, 127, 0.1)' }
+            ])
+          }
+        }
+      },
+      {
+        name: '温度',
+        type: 'line',
+        data: serverData.value.temperatureData,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 5,
+        itemStyle: {
+          color: '#0F73FE'
+        },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(15, 115, 254, 0.8)' },
+            { offset: 1, color: 'rgba(15, 115, 254, 0.1)' }
+          ])
+        },
+        connectNulls: true,
+        yAxisIndex: 0,
+        // 添加 emphasis 配置，让点击等交互时样式不变
+        emphasis: {
+          itemStyle: {
+            color: '#0F73FE' // 和正常状态的 itemStyle.color 一致
+          },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(15, 115, 254, 0.8)' },
+              { offset: 1, color: 'rgba(15, 115, 254, 0.1)' }
+            ])
+          }
+        }
+      }
+    ]
+  };
+
+  chart.setOption(option);
+  window.addEventListener('resize', () => chart?.resize());
 };
 
+// 刷新数据函数
 const refreshData = () => {
-  fetchTemperatureData();
+  fetchData();
 };
 
-const formatTime = (date: Date) => {
-  return date.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+// 处理时间范围变化
+const handleRangeChange = () => {
+  if (chart) chart.dispose();
+  fetchData();
 };
 
-// 生命周期
 onMounted(() => {
-  // 初始化历史数据
-  for (let i = 0; i < 24; i++) {
-    temperatureHistory.value.push(generateRandomTemperature());
-  }
-  updateTimeLabels();
-  
-  fetchTemperatureData();
-  
-  // 每1秒自动刷新一次
-  const interval = setInterval(fetchTemperatureData, 1000);
-  
-  // 清理定时器
-  onUnmounted(() => {
-    clearInterval(interval);
-  });
+  fetchData();
 });
 
-// 监听温度变化
-watch(currentTemperature, (newTemp) => {
-  console.log('温度更新:', newTemp);
+onBeforeUnmount(() => {
+  if (chart) {
+    chart.dispose();
+    window.removeEventListener('resize', () => chart?.resize());
+  }
+});
+
+watch([selectedRange, selectedDevice], () => {
+  if (chart) chart.dispose();
+  fetchData();
 });
 </script>
 
@@ -459,6 +399,7 @@ watch(currentTemperature, (newTemp) => {
   backdrop-filter: blur(10px);
   transition: var(--transition-base);
   overflow: hidden;
+
 }
 
 .temperature-monitor:hover {
@@ -481,7 +422,7 @@ watch(currentTemperature, (newTemp) => {
 }
 
 .title-section {
-  margin-bottom: var(--spacing-sm);
+
 }
 
 .card-title {
@@ -547,253 +488,93 @@ watch(currentTemperature, (newTemp) => {
 
 /* 主要内容 */
 .monitor-content {
-  padding: var(--spacing-2xl);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xl);
+  height: calc(100% - 100px);
 }
 
-/* 当前值显示 */
-.current-value-section {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--spacing-2xl);
-  align-items: center;
-  padding: var(--spacing-2xl);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: var(--radius-lg);
-  color: var(--text-white);
-  min-height: 120px;
-}
-
-.value-display {
-  text-align: center;
-}
-
-.value-container {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-sm);
-}
-
-.value {
-  font-size: 3.5rem;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -2px;
-}
-
-.unit {
-  font-size: 1.5rem;
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-.value-label {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  opacity: 0.9;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.status-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  align-items: flex-end;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-2xl);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.threshold-info {
-  text-align: right;
-  font-size: var(--font-size-xs);
-  opacity: 0.8;
-}
-
-.threshold-label {
-  font-weight: 500;
-  margin-right: var(--spacing-xs);
-}
-
-.threshold-value {
-  font-weight: 400;
-}
-
-/* 图表区域 */
-.chart-section {
+/* 温湿度趋势图样式 */
+.chart-wrapper {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: 8px;
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+
 }
 
-.chart-header {
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
+  padding-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .chart-title {
-  font-size: var(--font-size-lg);
+  margin: 0;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0;
 }
 
-.chart-legend {
+.select-group {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 10px;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
+.data-selector {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.3s;
+  width: 100px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.data-selector:hover {
+  border-color: #c0c4cc;
 }
 
-.legend-dot.normal {
-  background: var(--success-color);
-}
-
-.legend-dot.warning {
-  background: var(--warning-color);
-}
-
-.legend-dot.critical {
-  background: var(--error-color);
+.data-selector:focus {
+  outline: none;
+  border-color: #0F73FE;
+  box-shadow: 0 0 0 2px rgba(15, 115, 254, 0.2);
 }
 
 .chart-container {
-  height: 200px;
-  background: var(--bg-main);
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-}
-
-.chart {
   width: 100%;
-  height: 100%;
+  height: 400px;
+  margin-top: 10px;
+  border-radius: 6px;
 }
 
-/* 告警区域 */
-.alerts-section {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.alerts-header {
+.loading, .error, .no-data {
+  height: 400px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
+  font-size: 16px;
+  color: #606266;
+  background-color: var(--bg-main);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.alerts-title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.alerts-count {
-  font-size: var(--font-size-xs);
-  color: var(--text-tertiary);
-  background: rgba(0, 0, 0, 0.05);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-}
-
-.alerts-list {
-  display: flex;
+.error {
+  color: #f56c6c;
   flex-direction: column;
-  gap: var(--spacing-sm);
 }
 
-.alert-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  transition: var(--transition-fast);
-}
-
-.alert-item:hover {
-  transform: translateX(2px);
-}
-
-.alert-warning {
-  background: var(--warning-bg);
-  border: 1px solid rgba(250, 173, 20, 0.2);
-  color: var(--warning-color);
-}
-
-.alert-critical {
-  background: var(--error-bg);
-  border: 1px solid rgba(255, 77, 79, 0.2);
-  color: var(--error-color);
-}
-
-.alert-info {
-  background: var(--info-bg);
-  border: 1px solid rgba(24, 144, 255, 0.2);
-  color: var(--info-color);
-}
-
-.alert-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.alert-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.alert-message {
-  font-weight: 500;
-  margin-bottom: var(--spacing-xs);
-  line-height: 1.4;
-}
-
-.alert-time {
-  font-size: var(--font-size-xs);
-  opacity: 0.7;
-  font-weight: 400;
+.error-details {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 响应式设计 */
@@ -803,27 +584,17 @@ watch(currentTemperature, (newTemp) => {
     gap: var(--spacing-lg);
     align-items: stretch;
   }
-  
-  .current-value-section {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
-    text-align: center;
-  }
-  
-  .status-section {
-    align-items: center;
-  }
-  
-  .chart-header {
+
+  .header {
     flex-direction: column;
     gap: var(--spacing-md);
     align-items: stretch;
   }
-  
-  .chart-legend {
+
+  .select-group {
     justify-content: center;
   }
-  
+
   .device-info {
     justify-content: center;
   }
@@ -834,17 +605,9 @@ watch(currentTemperature, (newTemp) => {
     padding: var(--spacing-lg);
     gap: var(--spacing-lg);
   }
-  
-  .value {
-    font-size: 2.5rem;
-  }
-  
-  .unit {
-    font-size: 1.2rem;
-  }
-  
+
   .chart-container {
-    height: 150px;
+    height: 300px;
   }
 }
 </style>

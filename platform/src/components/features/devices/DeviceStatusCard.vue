@@ -33,7 +33,7 @@
             <span class="overview-value">{{ deviceStats.total }}</span>
           </div>
         </div>
-        
+
         <div class="overview-item online">
           <div class="overview-icon">
             <Wifi :size="20" />
@@ -43,7 +43,7 @@
             <span class="overview-value">{{ deviceStats.online }}</span>
           </div>
         </div>
-        
+
         <div class="overview-item offline">
           <div class="overview-icon">
             <WifiOff :size="20" />
@@ -53,7 +53,7 @@
             <span class="overview-value">{{ deviceStats.offline }}</span>
           </div>
         </div>
-        
+
         <div class="overview-item fault">
           <div class="overview-icon">
             <AlertTriangle :size="20" />
@@ -69,11 +69,11 @@
       <div class="device-types">
         <h4 class="section-title">设备类型分布</h4>
         <div class="type-grid">
-          <div 
-            v-for="type in deviceTypes" 
-            :key="type.name"
-            class="type-item"
-            :class="type.status"
+          <div
+              v-for="type in deviceTypes"
+              :key="type.name"
+              class="type-item"
+              :class="type.status"
           >
             <div class="type-icon">
               <component :is="type.icon" :size="16" />
@@ -97,10 +97,10 @@
             <button class="btn-view-all">查看全部</button>
           </div>
           <div class="fault-list">
-            <div 
-              v-for="device in faultDevices" 
-              :key="device.id"
-              class="fault-item"
+            <div
+                v-for="device in faultDevices"
+                :key="device.id"
+                class="fault-item"
             >
               <div class="device-info">
                 <div class="device-icon">
@@ -133,19 +133,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { 
-  RefreshCw, 
-  ChevronDown, 
-  Server, 
-  Wifi, 
-  WifiOff, 
+import {
+  RefreshCw,
+  ChevronDown,
+  Server,
+  Wifi,
+  WifiOff,
   AlertTriangle,
   Eye,
   Wrench,
   Thermometer,
   Droplets,
   Camera,
-  Zap
+  Zap,
+  FlaskConical
 } from 'lucide-vue-next';
 
 // 响应式数据
@@ -154,19 +155,20 @@ const showDetails = ref(false);
 
 // 设备统计数据
 const deviceStats = ref({
-  total: 24,
-  online: 22,
+  total: 7,
+  online: 6,
   offline: 1,
-  fault: 1
+  fault: 2
 });
 
 // 设备类型数据
 const deviceTypes = ref([
-  { name: '温度传感器', count: 8, status: 'online', icon: Thermometer },
-  { name: '湿度传感器', count: 6, status: 'online', icon: Droplets },
-  { name: '监控摄像头', count: 4, status: 'online', icon: Camera },
-  { name: '控制设备', count: 3, status: 'fault', icon: Zap },
-  { name: '数据采集器', count: 3, status: 'offline', icon: Server }
+  { name: '温度传感器', count: 7, status: 'online', icon: Thermometer },
+  { name: '湿度传感器', count: 7, status: 'online', icon: Droplets },
+  { name: 'PH传感器', count: 7, status: 'online', icon: FlaskConical  },
+  { name: '监控摄像头', count: 7, status: 'online', icon: Camera },
+  { name: '控制设备', count: 1, status: 'fault', icon: Zap },
+  { name: '数据采集器', count: 7, status: 'offline', icon: Server }
 ]);
 
 // 故障设备列表
@@ -212,7 +214,7 @@ const refreshData = async () => {
   try {
     // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // 更新设备统计数据
     deviceStats.value = {
       total: 24,
@@ -220,7 +222,7 @@ const refreshData = async () => {
       offline: Math.floor(Math.random() * 3),
       fault: Math.floor(Math.random() * 2)
     };
-    
+
     // 更新设备类型状态
     deviceTypes.value.forEach(type => {
       const random = Math.random();
@@ -228,7 +230,7 @@ const refreshData = async () => {
       else if (random > 0.6) type.status = 'offline';
       else type.status = 'online';
     });
-    
+
   } finally {
     loading.value = false;
   }
@@ -249,6 +251,7 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   transition: var(--transition-base);
   margin-bottom: 20px;
+  height: 587.5px;
 }
 
 .device-status-card:hover {
@@ -262,7 +265,8 @@ onMounted(() => {
   align-items: flex-start;
   padding: var(--spacing-xl) var(--spacing-2xl);
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(82, 196, 26, 0.05) 100%);
+  height: 91px;
 }
 
 .header-content {
@@ -389,6 +393,7 @@ onMounted(() => {
 
 .card-body {
   padding: var(--spacing-2xl);
+
 }
 
 .status-overview {
@@ -396,6 +401,8 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-2xl);
+
+  padding-top: 10px;
 }
 
 .overview-item {
@@ -459,10 +466,12 @@ onMounted(() => {
 
 .device-types {
   margin-bottom: var(--spacing-2xl);
+  padding-top: 13px;
+
 }
 
 .section-title {
-  font-size: var(--font-size-md);
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 var(--spacing-lg) 0;
@@ -471,7 +480,8 @@ onMounted(() => {
 .type-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--spacing-md);
+  gap: 20px;
+  padding-top: 8px;
 }
 
 .type-item {
@@ -691,25 +701,25 @@ onMounted(() => {
     align-items: flex-start;
     gap: var(--spacing-md);
   }
-  
+
   .status-overview {
     grid-template-columns: 1fr;
   }
-  
+
   .type-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .fault-item {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-sm);
   }
-  
+
   .fault-info {
     align-items: flex-start;
   }
-  
+
   .fault-actions {
     align-self: flex-end;
   }

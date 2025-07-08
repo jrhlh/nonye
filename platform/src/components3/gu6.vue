@@ -219,10 +219,8 @@ export default {
 .fault-management-container {
   font-family: Arial, sans-serif;
   padding: 20px;
-  background-color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.12);
-  width: 1295px; /* 固定容器宽度 */
+
+  width: 1390px; /* 固定容器宽度 */
   margin: 0 auto;
   padding-right: 10px; /* 增加右内边距 */
 }
@@ -239,8 +237,8 @@ export default {
   border: 1px solid #ddd;
   border-radius: 4px;
   width: 300px;
-  height: 25px;
-  font-size: 18px;
+  height: 35px;
+  font-size: 17px;
   margin-left: 5px;
 }
 
@@ -248,6 +246,7 @@ export default {
   display: flex;
   gap: 10px;
   margin-right: 15px;
+  padding-right: 12px;
 }
 
 .status-button {
@@ -309,7 +308,7 @@ export default {
 
 .status {
   padding: 5px 10px;
-  border-radius: 15px;
+  border-radius: 8px;
   color: #fff;
 }
 

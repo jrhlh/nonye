@@ -1,7 +1,7 @@
 <template>
   <div class="chart-container">
     <div class="chart-header">
-      <h2 class="title">土壤营养分布图</h2>
+      <span class="title">土壤营养分布图</span>
       <div class="legend">
         <div class="legend-item">
           <div class="color-dot" :style="{ backgroundColor: '#FBEF89' }"></div>
@@ -29,7 +29,7 @@ export default defineComponent({
   setup() {
     const chartStyle = ref({
       background: 'linear-gradient(to bottom right, #A9CCE3, #F9E79F, #ABEBC6)',
-      height: '200px',
+      height: '240px',
       borderRadius: '8px',
     });
 
@@ -56,6 +56,7 @@ export default defineComponent({
 
 .title {
   font-size: 24px;
+  font-weight: bolder;
   margin: 0;
 }
 

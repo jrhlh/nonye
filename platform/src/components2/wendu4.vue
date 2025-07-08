@@ -1,3 +1,4 @@
+<!-- wendu4.vue -->
 <template>
   <div class="chart-container">
     <div class="device-selector">
@@ -13,6 +14,104 @@
     <div v-if="loading" class="status loading">加载中...</div>
     <div v-if="error" class="status error">数据加载失败: {{ error }}</div>
     <div v-if="!loading && !error && !hasData" class="status no-data">无传感器数据</div>
+
+    <!-- 警告通知 -->
+    <div v-if="showWarning" class="warning-notification">
+      <div class="warning-content">
+        <h3>⚠️ 温度异常高警告</h3>
+        <p>预测到12:20温度将达到35°C，可能存在设备异常</p>
+        <button class="view-details-btn" @click="showDetails = true">查看详情</button>
+      </div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div v-if="showDetails" class="modal-overlay" @click.self="closeModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>设备异常预警详情</h2>
+          <button class="close-btn" @click="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="alert-banner">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+              <h3>温度过高预警</h3>
+              <p>系统检测到设备温度即将超过安全阈值</p>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>预警信息</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">异常类型</span>
+                <span class="detail-value">温度过高</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">预警级别</span>
+                <span class="detail-value warning-level">严重</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">预测时间</span>
+                <span class="detail-value">12:20</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">预测温度</span>
+                <span class="detail-value critical-temp" :style="{fontSize:'20px'}">35°C</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>可能原因</h4>
+            <ul class="reason-list">
+              <li>设备散热系统故障或堵塞</li>
+              <li>环境温度异常升高</li>
+              <li>设备负载过高持续运行</li>
+              <li>冷却系统未正常工作</li>
+            </ul>
+          </div>
+
+          <div class="detail-section">
+            <h4>处理建议</h4>
+            <div class="recommendation-cards">
+              <div class="recommendation-card">
+                <div class="card-icon">🔧</div>
+                <div class="card-content">
+                  <h5>立即检查</h5>
+                  <p>检查设备散热系统、风扇运行状态和通风情况</p>
+                </div>
+              </div>
+              <div class="recommendation-card">
+                <div class="card-icon">🌡️</div>
+                <div class="card-content">
+                  <h5>环境控制</h5>
+                  <p>确保设备所在环境温度适宜，必要时开启空调</p>
+                </div>
+              </div>
+              <div class="recommendation-card">
+                <div class="card-icon">⏲️</div>
+                <div class="card-content">
+                  <h5>临时措施</h5>
+                  <p>降低设备负载，安排短暂停机冷却</p>
+                </div>
+              </div>
+              <div class="recommendation-card">
+                <div class="card-icon">👨‍🔧</div>
+                <div class="card-content">
+                  <h5>专业维护</h5>
+                  <p>联系设备维护人员进行全面检查和维修</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="confirm-btn" @click="closeModal">确认收到</button>
+          <button class="secondary-btn" @click="closeModal">稍后处理</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -20,6 +119,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as echarts from 'echarts';
 import axios from 'axios';
+import eventBus from '../utlis/event-bus';
 
 interface SensorData {
   time: string;
@@ -34,27 +134,53 @@ const deviceList = ref<Record<string, string>>({});
 const selectedDeviceId = ref<string>('');
 const hasData = ref(false);
 
+const showWarning = ref(false);
+const showDetails = ref(false);
+const warningTriggered = ref(false);
+const chartFrozen = ref(false);
+let unfreezeTimer: number | null = null;
+
 const chartData = ref<{
   times: string[];
   actualTemps: (number | null)[];
   predictionTemps: (number | null)[];
 }>();
 
-// 更新间隔
-const DATA_UPDATE_INTERVAL = 5000; // 5秒更新一次数据
+const DATA_UPDATE_INTERVAL = 5000;
 let dataUpdateTimer: number | null = null;
 let timeUpdateTimer: number | null = null;
 
-// 初始时间序列（从9:00开始，每20分钟一个间隔）
 const initialTimes = [
   '09:00', '09:20', '09:40', '10:00',
   '10:20', '10:40', '11:00', '11:20'
 ];
 
-// 当前显示的时间序列
 const currentTimes = ref<string[]>([...initialTimes]);
 
-// 获取下一个时间点（增加20分钟）
+const unfreezeChart = () => {
+  chartFrozen.value = false;
+  if (chart) {
+    chart.setOption({
+      animationDuration: 1000,
+      animationEasing: 'cubicOut'
+    });
+  }
+};
+
+const closeModal = () => {
+  showDetails.value = false;
+
+  // 清除之前的定时器（如果有）
+  if (unfreezeTimer) {
+    clearTimeout(unfreezeTimer);
+  }
+
+  // 设置1秒后解冻图表
+  unfreezeTimer = setTimeout(() => {
+    unfreezeChart();
+  }, 1000);
+};
+
 const getNextTime = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   let newHours = hours;
@@ -68,24 +194,49 @@ const getNextTime = (timeStr: string) => {
   return `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
 };
 
-// 更新时间序列（平滑过渡）
 const updateTimeSeries = () => {
-  if (!chart) return;
+  if (!chart || chartFrozen.value) return;
 
-  // 使用动画更新x轴数据
+  const newTimes = currentTimes.value.map(time => getNextTime(time));
   chart.setOption({
     animationDuration: 1000,
     animationEasing: 'cubicOut',
     xAxis: {
-      data: currentTimes.value.map(time => getNextTime(time))
+      data: newTimes
     }
   });
 
-  // 更新当前时间序列
-  currentTimes.value = currentTimes.value.map(time => getNextTime(time));
+  currentTimes.value = newTimes;
+  checkAndTriggerWarning();
 };
 
-// 获取当前时间（对齐到最近的20分钟）
+const checkAndTriggerWarning = () => {
+  if (!warningTriggered.value && currentTimes.value.some(time => time === '12:20')) {
+    const index = currentTimes.value.indexOf('12:20');
+
+    if (index >= 4 && chartData.value) {
+      const predictionIndex = index - 4;
+      chartData.value.predictionTemps[predictionIndex] = 35;
+
+      updateChartData();
+      showWarning.value = true;
+      warningTriggered.value = true;
+      chartFrozen.value = true;
+
+      eventBus.emit('addTemperatureAnomaly', {
+        time: `${new Date().toISOString().split('T')[0]} 12:20`,
+        temperature: '35.0℃',
+        status: '高温预警',
+        action: '系统预测到温度将达到35°C，建议立即检查散热系统并降低设备负载'
+      });
+
+      setTimeout(() => {
+        showWarning.value = false;
+      }, 5000);
+    }
+  }
+};
+
 const getCurrentTime = () => {
   const now = new Date();
   const minutes = now.getMinutes();
@@ -95,7 +246,6 @@ const getCurrentTime = () => {
   return currentTime;
 };
 
-// 从后端获取设备列表
 const fetchDevices = async () => {
   try {
     const response = await axios.get('http://localhost:5000/api/chou1/devices');
@@ -110,7 +260,6 @@ const fetchDevices = async () => {
   }
 };
 
-// 从后端获取最新的实际传感器数据（只获取最后一个点）
 const fetchLatestActualSensorData = async (deviceId: string) => {
   try {
     loading.value = true;
@@ -141,7 +290,6 @@ const fetchLatestActualSensorData = async (deviceId: string) => {
   }
 };
 
-// 从后端获取最新的温度预测数据（只获取最后一个点）
 const fetchLatestTemperaturePrediction = async () => {
   try {
     const response = await axios.get('http://localhost:5000/api/prediction/temperature/latest');
@@ -152,12 +300,10 @@ const fetchLatestTemperaturePrediction = async () => {
     throw new Error(response.data.message || '获取预测数据失败');
   } catch (err) {
     console.error('获取预测数据失败:', err);
-    // 生成模拟预测数据
-    return 25 + (Math.random() * 2 - 1); // 24-26之间的随机值
+    return 25 + (Math.random() * 2 - 1);
   }
 };
 
-// 初始化图表
 const initChart = () => {
   if (!chartRef.value) return;
 
@@ -168,7 +314,6 @@ const initChart = () => {
 
   chart = echarts.init(chartRef.value);
 
-  // 定义共享的渐变配置
   const actualAreaGradient = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
     { offset: 0, color: 'rgba(164, 203, 234, 0.8)' },
     { offset: 1, color: 'rgba(219, 235, 250, 0.1)' }
@@ -182,7 +327,7 @@ const initChart = () => {
       formatter: (params: any) => {
         const time = params[0].axisValue;
         const value = params[0].value;
-        const isPrediction = params[0].dataIndex >= 4; // 前4个是实际数据，后4个是预测数据
+        const isPrediction = params[0].dataIndex >= 4;
         const prefix = isPrediction ? '预测' : '实际';
         return `${time}<br/>${prefix}温度: ${value?.toFixed(1) ?? '--'}°C`;
       }
@@ -253,7 +398,6 @@ const initChart = () => {
         animationEasingUpdate: 'cubicOut'
       },
       {
-        // 连接线系列
         name: '连接线',
         type: 'line',
         symbol: 'none',
@@ -275,27 +419,23 @@ const initChart = () => {
   chart.setOption(option);
 };
 
-// 更新图表数据
 const updateChartData = (newActualTemp?: number, newPredictionTemp?: number) => {
-  if (!chart || !chartData.value) return;
+  if (!chart || !chartData.value || chartFrozen.value) return;
 
   if (newActualTemp !== undefined) {
-    // 更新实际数据（保留前3个历史数据点）
     chartData.value.actualTemps = [
-      ...chartData.value.actualTemps.slice(1), // 移除第一个历史点
-      newActualTemp // 添加新的实际数据点
+      ...chartData.value.actualTemps.slice(1),
+      newActualTemp
     ];
   }
 
   if (newPredictionTemp !== undefined) {
-    // 更新预测数据（保留后3个历史预测点）
     chartData.value.predictionTemps = [
-      newPredictionTemp, // 新的预测点
-      ...chartData.value.predictionTemps.slice(0, 3) // 保留前3个预测点
+      newPredictionTemp,
+      ...chartData.value.predictionTemps.slice(0, 3)
     ];
   }
 
-  // 准备连接线数据（连接最后一个实际点和第一个预测点）
   const connectionData = Array(8).fill(null);
   if (chartData.value.actualTemps[3] !== null && chartData.value.predictionTemps[0] !== null) {
     connectionData[3] = chartData.value.actualTemps[3];
@@ -348,40 +488,38 @@ const updateChartData = (newActualTemp?: number, newPredictionTemp?: number) => 
         type: 'text',
         z: 100,
         style: { fill: '#ff6b6b', fontSize: 14, fontWeight: 'bold',  },
-        position: [chart.convertToPixel('xAxis', 3.5) + 10, 40] // 将 y 坐标从 20 改为 40
+        position: [chart.convertToPixel('xAxis', 3.5) + 10, 40]
       }
     ]
   });
 };
 
-// 初始化图表数据
 const initChartData = async () => {
   if (!selectedDeviceId.value) return;
   stopUpdateTimers();
 
-  // 重置时间序列
+  showWarning.value = false;
+  showDetails.value = false;
+  warningTriggered.value = false;
+  chartFrozen.value = false;
+
   currentTimes.value = [...initialTimes];
 
-  // 获取最新的实际数据
   const latestActualData = await fetchLatestActualSensorData(selectedDeviceId.value);
 
   if (latestActualData) {
-    // 获取最新的预测数据
     const latestPrediction = await fetchLatestTemperaturePrediction();
 
-    // 初始化图表数据
     chartData.value = {
       times: currentTimes.value,
-      actualTemps: [22.5, 23.0, 23.5, latestActualData.temperature], // 初始历史数据+最新点
-      predictionTemps: [latestPrediction, 24.5, 24.0, 23.8] // 最新预测+历史预测
+      actualTemps: [22.5, 23.0, 23.5, latestActualData.temperature],
+      predictionTemps: [latestPrediction, 24.5, 24.0, 23.8]
     };
 
-    // 确保最后一个实际值和第一个预测值不同
     if (chartData.value.actualTemps[3] === chartData.value.predictionTemps[0]) {
       chartData.value.predictionTemps[0] += 0.5;
     }
 
-    // 初始化图表
     if (!chart) initChart();
     updateChartData();
     hasData.value = true;
@@ -389,39 +527,30 @@ const initChartData = async () => {
   }
 };
 
-// 启动定时更新
 const startUpdateTimers = () => {
   stopUpdateTimers();
 
-  // 数据更新定时器（5秒更新一次）
   dataUpdateTimer = setInterval(async () => {
-    if (!selectedDeviceId.value || !chartData.value) return;
+    if (!selectedDeviceId.value || !chartData.value || chartFrozen.value) return;
 
-    // 获取最新的实际数据
     const latestActualData = await fetchLatestActualSensorData(selectedDeviceId.value);
     if (!latestActualData) return;
 
-    // 获取最新的预测数据
     const latestPrediction = await fetchLatestTemperaturePrediction();
 
-    // 确保最后一个实际值和第一个预测值不同
     let adjustedPrediction = latestPrediction;
     if (Math.abs(latestActualData.temperature - latestPrediction) < 0.5) {
       adjustedPrediction = latestActualData.temperature + (Math.random() > 0.5 ? 0.5 : -0.5);
     }
 
-    // 更新图表（只更新最后一个实际数据点和第一个预测数据点）
     updateChartData(latestActualData.temperature, adjustedPrediction);
   }, DATA_UPDATE_INTERVAL);
 
-  // 时间更新定时器（5秒更新一次）
   timeUpdateTimer = setInterval(() => {
-    // 平滑更新时间序列
     updateTimeSeries();
   }, DATA_UPDATE_INTERVAL);
 };
 
-// 停止定时更新
 const stopUpdateTimers = () => {
   if (dataUpdateTimer) {
     clearInterval(dataUpdateTimer);
@@ -433,7 +562,6 @@ const stopUpdateTimers = () => {
   }
 };
 
-// 组件挂载
 onMounted(async () => {
   deviceList.value = await fetchDevices();
 
@@ -443,23 +571,24 @@ onMounted(async () => {
   }
 });
 
-// 组件卸载
 onBeforeUnmount(() => {
   if (chart) {
     chart.dispose();
     chart = null;
   }
   stopUpdateTimers();
+  if (unfreezeTimer) {
+    clearTimeout(unfreezeTimer);
+    unfreezeTimer = null;
+  }
 });
 
-// 响应窗口大小变化
 window.addEventListener('resize', () => {
   if (chart) {
     chart.resize();
   }
 });
 
-// 监听设备选择变化
 watch(selectedDeviceId, async (newId) => {
   if (newId) {
     await initChartData();
@@ -536,5 +665,337 @@ watch(selectedDeviceId, async (newId) => {
   background: rgba(0, 0, 0, 0.8);
   color: white;
   border: 1px solid #ddd;
+}
+
+.warning-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #ff4d4f;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out;
+  max-width: 350px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.warning-content h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.warning-content p {
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.view-details-btn {
+  background-color: white;
+  color: #ff4d4f;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  float: right;
+  transition: background-color 0.2s;
+}
+
+.view-details-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #1f2329;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #86909c;
+  transition: color 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.close-btn:hover {
+  color: #1f2329;
+  background-color: #f5f5f5;
+}
+
+.modal-body {
+  padding: 24px;
+  flex: 1;
+}
+
+.alert-banner {
+  background-color: #fff8e6;
+  border-left: 4px solid #faad14;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.alert-icon {
+  font-size: 28px;
+  margin-right: 16px;
+  color: #faad14;
+}
+
+.alert-content h3 {
+  margin: 0 0 4px 0;
+  color: #d48806;
+  font-size: 16px;
+}
+
+.alert-content p {
+  margin: 0;
+  color: #86909c;
+  font-size: 14px;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #1f2329;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-label {
+  font-size: 13px;
+  color: #86909c;
+  margin-bottom: 4px;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #1f2329;
+  font-weight: 500;
+}
+
+.warning-level {
+  color: #fa8c16;
+  background-color: #fff7e6;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.critical-temp {
+  color: #f5222d;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.reason-list,
+.impact-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #595959;
+}
+
+.reason-list li,
+.impact-list li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.recommendation-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.recommendation-card {
+  background-color: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.recommendation-card:nth-child(2) {
+  background-color: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.recommendation-card:nth-child(3) {
+  background-color: #fffbe6;
+  border-color: #ffe58f;
+}
+
+.recommendation-card:nth-child(4) {
+  background-color: #f9f0ff;
+  border-color: #d3adf7;
+}
+
+.card-icon {
+  font-size: 20px;
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.card-content h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #1f2329;
+}
+
+.card-content p {
+  margin: 0;
+  font-size: 13px;
+  color: #595959;
+  line-height: 1.5;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+}
+
+.confirm-btn {
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.confirm-btn:hover {
+  background-color: #40a9ff;
+}
+
+.secondary-btn {
+  background-color: white;
+  color: #666;
+  border: 1px solid #d9d9d9;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.secondary-btn:hover {
+  color: #1890ff;
+  border-color: #1890ff;
+  background-color: #f0f9ff;
 }
 </style>

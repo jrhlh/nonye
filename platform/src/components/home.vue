@@ -4,7 +4,7 @@
       <div class="home-container">
         <div class="home-box">
           <div class="home-right">
-            <img src="../assets/home.png" alt="">
+            <img src="../assets/syh2.png" alt="">
           </div>
           <div class="home-left">
             <div class="home-top">
@@ -34,14 +34,17 @@
             </div>
             <div class="home-main">
               <h1>禾境智联HorizonLink</h1>
-              <p style="line-height: 1.5;">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Quaerat eveniet hic natus? Nihil, repudiandae.
-                A quaerat vel recusandae quis corrupti porro nulla possimus dolore consequuntur perferendis.
-                Nulla, deserunt atque ipsa soluta quaerat quasi saepe a ea numquam incidunt minus quo iure.
-              </p>
+              <div :style="{width:'90%',paddingTop:'10px'}">
+                <p style="line-height: 1.5; font-size: 22px">
+                  Lorem ipsum dolor sit amet consectetur adipisicing elit. Quaerat eveniet hic natus? Nihil, repudiandae.
+                  A quaerat vel recusandae quis corrupti porro nulla possimus dolore consequuntur perferendis.
+                  Nulla, deserunt atque ipsa soluta quaerat quasi saepe a ea numquam incidunt minus quo iure.
+                </p>
+              </div>
+
             </div>
             <button class="join-button">join us</button>
-            <img src="../assets/under.png" alt="">
+            <img src="../assets/syh1.png" alt="" class="syh">
           </div>
         </div>
       </div>
@@ -91,14 +94,14 @@ const handleNavigation = (pageName: string) => {
 
   // 路由映射表
   const routeMap: Record<string, string> = {
-    'Home1': '/shou/home1',
-    'Shu2': '/shou/shu2',
-    'Gu3': '/shou/gu3',
-    'She4': '/shou/she4',
-    'Pople5': '/shou/pople5'
+    'Home1': '/dashboard',
+    'Shu2': '/reports',
+    'Gu3': '/monitoring',
+    'She4': '/devices',
+    'Pople5': '/personnel'
   }
 
-  const targetRoute = routeMap[pageName] || '/shou/home1'
+  const targetRoute = routeMap[pageName] || '/dashboard'
   router.push(targetRoute)
 }
 </script>
@@ -115,13 +118,14 @@ const handleNavigation = (pageName: string) => {
   margin: 0;
   padding: 0;
   position: relative;
-  right: 35px;
 }
 
 .scroll-container {
   overflow: hidden;
   height: 100vh;
   width: 100%;
+  background-color: white;
+
 }
 
 .home-container {
@@ -129,29 +133,33 @@ const handleNavigation = (pageName: string) => {
   width: 800px;
   height: 500px;
   position: relative;
+
 }
 
 .home-right img {
   width: 90vh;
   position: absolute;
-  right: -430px;
+  right: -370px;
   top: 120px;
 }
 
 .home-left {
   position: relative;
-  right: 280px;
+  right: 320px;
   width: 640px;
 }
-
+.syh{
+  width: 94%;
+}
 .nav-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px;
   width:  100vw;
-  padding-right: 20px;
+  padding-right: 90px;
   gap: 30px;
+
 }
 
 .top-left {
@@ -175,12 +183,14 @@ const handleNavigation = (pageName: string) => {
 .top-middle {
   margin-left: 500px;
   align-items: center;
-  gap: 40px;
+  gap: 45px;
   font-size: 22px;
   position: relative;
   top: -15px;
   display: flex;
   justify-content: space-around;
+
+  padding-right: 80px;
 }
 
 .top-middle p {
@@ -201,7 +211,7 @@ const handleNavigation = (pageName: string) => {
 }
 
 .home-main h1 {
-  margin-top: 85px;
+  margin-top: 65px;
   font-size: 65px;
   letter-spacing: 2px;
 }

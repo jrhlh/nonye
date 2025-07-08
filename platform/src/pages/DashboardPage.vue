@@ -1,133 +1,105 @@
 <template>
   <div class="dashboard-page">
-
     <!-- 统计卡片区域 -->
     <div class="stats-section">
-      <StatCards 
-        :user-count="0"
-        :device-count="0"
-        :temperature="0"
-        :fault-count="0"
-        :stats="statistics"
-        :loading="isStatsLoading"
+      <StatCards
+          :user-count="0"
+          :device-count="0"
+          :temperature="0"
+          :fault-count="0"
+          :stats="statistics"
+          :loading="isStatsLoading"
       />
     </div>
 
     <!-- 主要内容区域 -->
     <div class="main-content">
-      <!-- 左侧列 -->
-      <div class="left-column">
-        <!-- 环境监控区域 -->
-        <div class="monitoring-section">
-          <div class="section-header">
-            <h2 class="section-title">环境监控</h2>
-            <span class="section-badge">实时</span>
-          </div>
-          <div class="monitoring-grid">
-            <TemperatureMonitor 
+      <!-- 环境监控区域 - 左列（1份） -->
+      <div class="monitoring-section">
+        <div class="section-header">
+          <h2 class="section-title">环境监控</h2>
+          <span class="section-badge">实时</span>
+        </div>
+        <div class="monitoring-grid">
+          <TemperatureMonitor
               :device-id="'temp-001'"
               :threshold="{ warning: 30, critical: 35 }"
               @alert="handleTemperatureAlert"
               @data-update="handleTemperatureUpdate"
-            />
-            <HumidityMonitor 
-              :device-id="'humidity-001'"
-              :threshold="{ low: 30, high: 80 }"
-              @alert="handleHumidityAlert"
-              @data-update="handleHumidityUpdate"
-            />
-          </div>
+          />
         </div>
+      </div>
 
-        <!-- 设备地图区域 -->
-        <div class="map-section">
-          <div class="section-header">
-            <h2 class="section-title">设备地理分布</h2>
-            <span class="section-badge">地图</span>
-          </div>
-          <MapSection />
+      <!-- 设备运行状态区域 - 右列（1份） -->
+      <div class="device-status-section">
+        <div class="section-header">
+          <h2 class="section-title">设备运行状态</h2>
+          <span class="section-badge">监控</span>
         </div>
+        <DeviceStatusCard />
+      </div>
 
-        <!-- 生长趋势分析区域 -->
+      <!-- 地图区域 - 跨两列 -->
+      <div class="map-section">
+        <div class="section-header">
+          <h2 class="section-title">设备地理分布</h2>
+          <span class="section-badge">地图</span>
+        </div>
+        <div class="under">
+          <iframe
+              src="/map_with_random_points.html"
+              width="100%"
+              height="100%"
+          ></iframe>
+        </div>
+      </div>
+
+      <!-- 2:3比例区域容器 -->
+      <div class="ratio-section">
+        <!-- AI预警系统区域 - 占2份 -->
         <div class="growth-section">
+          <div class="section-header">
+            <h2 class="section-title">AI预警系统</h2>
+            <span class="section-badge">分析</span>
+          </div>
+          <div class="body-foot">
+            <div class="body-under-box">
+              <div class="box002">
+                <AIyujing />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 生长趋势分析区域 - 占3份 -->
+        <div class="personnel-section">
           <div class="section-header">
             <h2 class="section-title">生长趋势分析</h2>
             <span class="section-badge">分析</span>
           </div>
-          <GrowthTrendAnalysis />
-        </div>
-      </div>
-
-      <!-- 右侧列 -->
-      <div class="right-column">
-        <!-- 设备运行状态区域 -->
-        <div class="device-status-section">
-          <div class="section-header">
-            <h2 class="section-title">设备运行状态</h2>
-            <span class="section-badge">监控</span>
+          <div class="xx">
+            <Shengzhang />
           </div>
-          <DeviceStatusCard />
-        </div>
-
-        <!-- 人员管理区域 -->
-        <div class="personnel-section">
-          <div class="section-header">
-            <h2 class="section-title">人员管理</h2>
-            <span class="section-badge">管理</span>
-          </div>
-          <PersonnelManagement 
-            :current-user="currentUser"
-            @user-created="handleUserCreated"
-            @user-updated="handleUserUpdated"
-            @user-deleted="handleUserDeleted"
-          />
-        </div>
-
-        <!-- AI助手区域 -->
-        <div class="ai-section">
-          <div class="section-header">
-            <h2 class="section-title">AI智能助手</h2>
-            <span class="section-badge">AI</span>
-          </div>
-          <AISection />
         </div>
       </div>
     </div>
-
-    <!-- 通知区域 -->
-    <div class="notifications" v-if="notifications.length > 0">
-      <div 
-        v-for="notification in notifications" 
-        :key="notification.id"
-        class="notification-item"
-        :class="`notification-${notification.type}`"
-      >
-        <span class="notification-icon">{{ notification.icon }}</span>
-        <span class="notification-message">{{ notification.message }}</span>
-        <button 
-          class="notification-close"
-          @click="removeNotification(notification.id)"
-        >
-          <X :size="16" />
-        </button>
-      </div>
+    <div>
+      <!-- 你的页面内容 -->
+      <askai />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { RefreshCw, Download, X } from 'lucide-vue-next';
-import BaseButton from '../components/ui/BaseButton.vue';
+import { ref, onMounted } from 'vue';
+import AIyujing from "./AIyujing.vue";
+import Shengzhang from "./shengzhang.vue";
 import StatCards from '../components/dashboard/StatCards.vue';
 import TemperatureMonitor from '../components/features/monitoring/TemperatureMonitor.vue';
-import HumidityMonitor from '../components/features/monitoring/HumidityMonitor.vue';
-import MapSection from '../components/dashboard/MapSection.vue';
-import GrowthTrendAnalysis from '../components/features/analysis/GrowthTrendAnalysis.vue';
 import DeviceStatusCard from '../components/features/devices/DeviceStatusCard.vue';
-import PersonnelManagement from '../components/features/personnel/PersonnelManagement.vue';
-import AISection from '../components/dashboard/AISection.vue';
+import Askai from "../components1/askai.vue";
 
+// 类型定义
 interface Statistic {
   title: string;
   value: string | number;
@@ -193,11 +165,10 @@ const statistics = ref<Statistic[]>([
   }
 ]);
 
-// 方法
+// 方法：刷新所有数据
 const refreshAllData = async () => {
   isRefreshing.value = true;
   try {
-    // 模拟刷新所有数据
     await new Promise(resolve => setTimeout(resolve, 2000));
     addNotification('success', '数据刷新成功');
   } catch (error) {
@@ -207,10 +178,10 @@ const refreshAllData = async () => {
   }
 };
 
+// 方法：导出报告
 const exportReport = async () => {
   isExporting.value = true;
   try {
-    // 模拟导出报告
     await new Promise(resolve => setTimeout(resolve, 3000));
     addNotification('success', '报告导出成功');
   } catch (error) {
@@ -220,36 +191,42 @@ const exportReport = async () => {
   }
 };
 
+// 处理温度告警
 const handleTemperatureAlert = (alert: any) => {
   addNotification('warning', `温度告警: ${alert.message}`);
 };
 
+// 处理湿度告警
 const handleHumidityAlert = (alert: any) => {
   addNotification('warning', `湿度告警: ${alert.message}`);
 };
 
+// 处理温度更新
 const handleTemperatureUpdate = (temperature: number) => {
-  // 更新统计数据
   console.log('温度更新:', temperature);
 };
 
+// 处理湿度更新
 const handleHumidityUpdate = (humidity: number) => {
-  // 更新统计数据
   console.log('湿度更新:', humidity);
 };
 
+// 处理用户创建
 const handleUserCreated = (user: any) => {
   addNotification('success', `用户 ${user.username} 创建成功`);
 };
 
+// 处理用户更新
 const handleUserUpdated = (user: any) => {
   addNotification('success', `用户 ${user.username} 更新成功`);
 };
 
+// 处理用户删除
 const handleUserDeleted = (username: string) => {
   addNotification('info', `用户 ${username} 已删除`);
 };
 
+// 添加通知
 const addNotification = (type: Notification['type'], message: string) => {
   const notification: Notification = {
     id: Date.now().toString(),
@@ -258,19 +235,20 @@ const addNotification = (type: Notification['type'], message: string) => {
     icon: getNotificationIcon(type),
     timestamp: new Date()
   };
-  
   notifications.value.unshift(notification);
-  
-  // 5秒后自动移除通知
+
+  // 5秒后自动移除
   setTimeout(() => {
     removeNotification(notification.id);
   }, 5000);
 };
 
+// 移除通知
 const removeNotification = (id: string) => {
   notifications.value = notifications.value.filter(n => n.id !== id);
 };
 
+// 获取通知图标
 const getNotificationIcon = (type: Notification['type']): string => {
   const icons = {
     success: '✅',
@@ -281,9 +259,8 @@ const getNotificationIcon = (type: Notification['type']): string => {
   return icons[type];
 };
 
-// 生命周期
+// 生命周期：挂载时
 onMounted(() => {
-  // 初始化数据
   console.log('仪表板页面已加载');
 });
 </script>
@@ -296,37 +273,50 @@ onMounted(() => {
   font-family: var(--font-family);
 }
 
-/* 页面头部 */
-.dashboard-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-bottom: var(--spacing-3xl);
-  padding: var(--spacing-2xl);
-  background: var(--bg-card-hover);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border-card);
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
-}
-
 /* 统计区域 */
 .stats-section {
   margin-bottom: var(--spacing-3xl);
+  padding-left: 5px;
 }
 
 /* 主要内容区域 */
 .main-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr; /* 环境监控和设备状态1:1 */
   gap: var(--spacing-3xl);
   margin-bottom: var(--spacing-3xl);
+  padding-left: 6px;
+}
+
+/* 2:3比例区域容器 */
+.ratio-section {
+  grid-column: 1 / -1; /* 跨两列 */
+  display: grid;
+  grid-template-columns: 2fr 3fr; /* AI预警和生长趋势2:3 */
+  gap: var(--spacing-3xl);
+}
+
+/* 地图区域 */
+.map-section {
+  grid-column: 1 / -1; /* 跨两列 */
+  margin-bottom: var(--spacing-3xl);
+  margin-top: -40px;
+}
+
+/* 环境监控和设备状态区域 */
+.monitoring-section,
+.device-status-section {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--spacing-2xl);
+}
+
+/* AI预警和生长趋势区域 */
+.growth-section,
+.personnel-section {
+  margin-bottom: 0;
+  grid-column: auto;
+  margin-top: -20px;
 }
 
 /* 区域标题 */
@@ -344,6 +334,18 @@ onMounted(() => {
   margin: 0;
 }
 
+/* 生长趋势容器 */
+.xx {
+  background-color: #FFFFFF;
+  padding: 20px 20px;
+  text-align: center;
+  background: var(--bg-card-hover);
+  border-radius: 15px;
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
+}
+
+/* 区域徽章 */
 .section-badge {
   padding: var(--spacing-xs) var(--spacing-md);
   background: var(--gradient-primary);
@@ -355,30 +357,50 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
-/* 监控区域 */
-.monitoring-section {
-  margin-bottom: var(--spacing-3xl);
+/* 地图容器 */
+.under {
+  width: 100%;
+  height: 635px;
+  background-color: #FFFFFF;
+  padding: 22px 22px;
+  text-align: center;
+  background: var(--bg-card-hover);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
 }
 
+/* 监控区域网格 */
 .monitoring-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: var(--spacing-xl);
 }
 
-/* 地图区域 */
-.map-section {
-  margin-bottom: var(--spacing-3xl);
+/* AI预警容器 */
+.body-foot {
+  width: 100%;
+  height: 560px;
+  margin-top: 21.5px;
+  display: flex;
+  gap: 20px;
+  background: var(--bg-card-hover);
+  border-radius: 15px;
+  box-shadow: var(--shadow-md);
 }
 
-/* 人员管理区域 */
-.personnel-section {
-  margin-bottom: var(--spacing-3xl);
+.body-under-box {
+  flex: 1;
 }
 
-/* AI助手区域 */
-.ai-section {
-  margin-bottom: var(--spacing-3xl);
+.box002 {
+  width: 100%;
+  height: 572px;
+  background-color: #FFFFFF;
+
+  background: var(--bg-card-hover);
+  border-radius: 15px;
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
 }
 
 /* 通知区域 */
@@ -465,38 +487,20 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1400px) {
-  .dashboard-page {
-    padding: var(--spacing-2xl);
-  }
-  
-  .main-content {
-    gap: var(--spacing-2xl);
-  }
-  
-  .monitoring-grid {
-    gap: var(--spacing-lg);
-  }
-}
-
 @media (max-width: 1200px) {
-  .main-content {
-    grid-template-columns: 1fr;
+  .main-content,
+  .ratio-section {
+    grid-template-columns: 1fr; /* 小屏幕单列 */
     gap: var(--spacing-2xl);
   }
-  
-  .monitoring-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .dashboard-header {
-    flex-direction: column;
-    gap: var(--spacing-xl);
-    align-items: stretch;
-  }
-  
-  .header-actions {
-    justify-content: flex-start;
+
+  .map-section,
+  .monitoring-section,
+  .growth-section,
+  .device-status-section,
+  .personnel-section,
+  .ratio-section {
+    grid-column: 1;
   }
 }
 
@@ -504,33 +508,14 @@ onMounted(() => {
   .dashboard-page {
     padding: var(--spacing-lg);
   }
-  
-  .dashboard-header {
-    padding: var(--spacing-xl);
-    margin-bottom: var(--spacing-2xl);
-  }
-  
+
   .main-content {
     gap: var(--spacing-xl);
     margin-bottom: var(--spacing-2xl);
   }
-  
-  .monitoring-section,
-  .map-section,
-  .personnel-section,
-  .ai-section {
-    margin-bottom: var(--spacing-2xl);
-  }
-  
+
   .section-title {
     font-size: var(--font-size-lg);
-  }
-  
-  .notifications {
-    top: var(--spacing-lg);
-    right: var(--spacing-lg);
-    left: var(--spacing-lg);
-    max-width: none;
   }
 }
 
@@ -538,16 +523,7 @@ onMounted(() => {
   .dashboard-page {
     padding: var(--spacing-md);
   }
-  
-  .dashboard-header {
-    padding: var(--spacing-lg);
-  }
-  
-  .header-actions {
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-  
+
   .monitoring-grid {
     gap: var(--spacing-md);
   }

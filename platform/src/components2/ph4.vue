@@ -152,7 +152,7 @@ const renderChart = (data) => {
         }
       },
       right: 20,
-      top: 20
+      top: 1
     },
     legend: {
       data: ['实际值', '连接线', '预测值'],

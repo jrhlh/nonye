@@ -12,7 +12,7 @@
       <select v-model="timeRange" @change="handleTimeRangeChange" class="range-select">
         <option value="current">当前时间</option>
         <option value="20min">预测后20分钟</option>
-        <option value="1hour">预测后1小时</option>
+        <option value="1hour">预测后2小时</option>
       </select>
     </div>
 

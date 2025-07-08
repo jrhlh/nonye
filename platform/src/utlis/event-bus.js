@@ -1,7 +1,7 @@
 // utils/event-bus.js - 改进事件总线以管理全局状态
 class GlobalState {
     constructor() {
-        this.threshold = 36; // 默认阈值
+        this.threshold = 35; // 默认阈值
         this.listeners = new Map();
     }
 

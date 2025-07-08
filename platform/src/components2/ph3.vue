@@ -97,11 +97,12 @@
 
 .top-box {
   width: 95%;
-  height: 180px;
+  height: 185px;
   margin-left: 20px;
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 16px;
+  margin-top: 20px;
 }
 
 .box01 {
@@ -160,6 +161,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+
 }
 
 .recommendation-item01 {
@@ -202,8 +204,8 @@
   padding: 5px 10px;
   border-radius: 4px;
   font-size: 19.9px;
-  width: 73px;
-  height: 58px;
+  width: 87px;
+  height: 50px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -224,6 +226,9 @@
   left: 16px;
   margin-top: 28px;
   box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+  height: 560px;
+  padding-top: 35px;
+
 }
 
 .middle-box {
@@ -238,24 +243,35 @@
   margin-right: 10px;
   margin-left: 3px;
   position: relative;
-  top: -5px;
+
 }
 
 .box1 p {
   position: relative;
-  top: -16px;
+
+}
+.box1 input {
+  position: relative;
+  top: 5px;
+  width: 100px;
+  height: 35px;
 }
 
 .box2 {
   width: 18%;
   height: 60px;
   position: relative;
-  top: -5px;
-}
 
+}
+.box2 input {
+  position: relative;
+  top: 5px;
+  width: 100px;
+  height: 35px;
+}
 .box2 p {
   position: relative;
-  top: -16px;
+
 }
 
 .box3 {

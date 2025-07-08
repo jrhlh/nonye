@@ -57,7 +57,7 @@ export default {
       todayFaults: 0,       // 今日故障数
       todayIncrease: 0,     // 今日故障增减数
       monthlyFaults: 0,     // 本月累计故障数
-      limit: 300,           // 故障上限（可从后端获取或固定值）
+      limit: 100,           // 故障上限（可从后端获取或固定值）
       isLoading: false      // 加载状态
     };
   },

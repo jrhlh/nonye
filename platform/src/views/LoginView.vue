@@ -33,7 +33,7 @@ const login = async () => {
         token: response.data.token
       }));
 
-      router.push('/shou');
+      router.push('/dashboard');
     }
   } catch (error) {
     const axiosError = error as AxiosError;
@@ -117,10 +117,11 @@ const login = async () => {
   position: relative;
   z-index: 1000;
   padding-top: 90px;
-  padding-left: 115px;
+  padding-left: 105px;
   color: #11659a;
   font-family: "Roboto", sans-serif;
   font-size: 17px;
+
 }
 
 .login-top-box h2 {
@@ -152,6 +153,7 @@ const login = async () => {
   transform: translateY(-50%);
   width: 21px;
   pointer-events: none;
+  z-index: 2;
 }
 
 .input-field {
@@ -160,11 +162,23 @@ const login = async () => {
   height: 50px;
   border-radius: 23px;
   background-color: #f0f0f0;
-  border: none;
+  border: 1px solid transparent;
   font-size: 17px;
   color: #3c3c3c;
-
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  padding-right: 15px;
 }
+
+/* 均匀的渐变蓝色阴影（四周均匀分布） */
+.input-field:focus {
+  outline: none;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+  border-color: rgba(5, 90, 186, 0.3);
+  background-color: #fff;
+}
+
 
 .login-button {
   width: 125px;
@@ -177,11 +191,24 @@ const login = async () => {
   cursor: pointer;
   margin-top: 7px;
   font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 
 .login-p {
   font-size: 17px;
   padding-top: 40px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.login-p:hover {
+  color: #007bff;
+  text-decoration: underline;
 }
 
 .login-p1 {
@@ -189,5 +216,8 @@ const login = async () => {
   top: -94px;
   left: 244px;
   color: black;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
-</style> 
+</style>

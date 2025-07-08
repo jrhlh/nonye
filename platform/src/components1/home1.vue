@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import PrecipitationChart from "./PrecipitationChart.vue";
-import Bingzhuang1 from "./bingzhuang1.vue";
-import AIyujing from "./AIyujing.vue";
-import Shengzhang from "./shengzhang.vue";
+import Bingzhuang1 from "../components/features/devices/bingzhuang1.vue";
+import AIyujing from "../pages/AIyujing.vue";
+import Shengzhang from "../pages/shengzhang.vue";
 import axios from 'axios';
 import Askai from  "./askai.vue";
 import StatCards from '../components/dashboard/StatCards.vue';

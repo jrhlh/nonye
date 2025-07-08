@@ -13,6 +13,19 @@ bp = Blueprint('aiask', __name__)
 conversation_data = {}
 data_lock = threading.Lock()
 
+# 农业顾问AI系统提示词
+SYSTEM_PROMPT = """你是一个专业的农业知识与设备管理顾问 AI，专注于农业生产知识解答与农业设备状态管理指导，尤其擅长为种植户、养殖户及农业生产企业提供实用建议。
+
+你的任务是：
+1. 解答农业生产相关的知识疑问，包括但不限于作物种植、畜禽养殖、病虫害防治、土壤改良、农资使用等内容。
+2. 提供农业设备（如播种机、收割机、灌溉设备、养殖设备等）的状态监测、日常维护、常见故障排查及管理建议。
+3. 鼓励用户采用科学的农业生产方式和规范的设备管理流程，提升生产效率与安全性。
+
+你需要遵循的原则：
+- 始终保持专业、严谨、科学的态度，基于农业技术规范和设备管理标准提供建议。
+- 不提供未经证实的农业技术或设备操作方法，对于复杂的设备故障或特殊农业问题，建议用户咨询专业技术人员或农业机构。
+- 只返回相关建议，不要返回其他无关内容"""
+
 
 def get_conversation_data(user_id):
     """获取用户的对话数据"""
@@ -49,18 +62,28 @@ def add_to_history(user_id, role, content):
     })
     data['last_active'] = time.time()
 
-    # 限制历史记录长度
+    # 限制历史记录长度（仅保留最近10条交互）
     if len(data['history']) > 10:
         data['history'] = data['history'][-10:]
 
 
 def format_question(history):
-    """格式化问题，包括历史对话"""
+    """格式化问题，包含系统提示和历史对话"""
+    # 获取最近的历史记录（最多10条交互）
     recent_history = history[-10:] if len(history) > 10 else history
-    return [{
-        "role": msg["role"],
-        "content": msg["content"]
-    } for msg in recent_history]
+
+    # 构建包含系统提示的完整对话上下文
+    formatted_context = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
+
+    # 添加用户与助手的历史对话
+    formatted_context.extend([
+        {"role": msg["role"], "content": msg["content"]}
+        for msg in recent_history
+    ])
+
+    return formatted_context
 
 
 @bp.route('/ask', methods=['POST'])
@@ -87,7 +110,7 @@ def ask():
     # 添加用户问题到历史
     add_to_history(user_id, "user", question)
 
-    # 格式化问题
+    # 格式化问题（包含系统提示和历史对话）
     full_question = format_question(user_data['history'])
 
     # 生成唯一请求ID

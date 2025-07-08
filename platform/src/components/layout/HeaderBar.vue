@@ -1,9 +1,20 @@
 <script setup lang="ts">
-import { Users, ChevronDown, Menu as MenuIcon } from 'lucide-vue-next';
+import { ChevronDown, Menu as MenuIcon } from 'lucide-vue-next';
 import { computed } from 'vue';
+
+// 导入本地头像图片
+import c1 from '/src/assets/c1.jpg';
+import c2 from '/src/assets/c2.jpg';
+import c3 from '/src/assets/c3.jpg';
+import c4 from '/src/assets/c4.jpg';
+import c5 from '/src/assets/c5.jpg';
+import c6 from '/src/assets/c6.jpg';
+
+const avatarImages = [c1, c2, c3, c4, c5, c6];
 
 const props = defineProps<{ collapsed: boolean, toggleSidebar: () => void }>();
 
+// 获取用户名和随机头像
 const username = computed(() => {
   try {
     return JSON.parse(localStorage.getItem('user') || '{}').username || '未登录';
@@ -11,8 +22,13 @@ const username = computed(() => {
     return '未登录';
   }
 });
-const avatarUrl = computed(() => {
-  return 'https://avatars.dicebear.com/api/identicon/' + (username.value || 'guest') + '.svg';
+
+const randomAvatar = computed(() => {
+  if (username.value === '未登录') {
+    return c1; // 默认头像
+  }
+  const randomIndex = Math.floor(Math.random() * avatarImages.length);
+  return avatarImages[randomIndex];
 });
 </script>
 
@@ -26,7 +42,7 @@ const avatarUrl = computed(() => {
     </div>
     <div class="header-right">
       <div class="user-block">
-        <img :src="avatarUrl" class="user-avatar" alt="avatar" />
+        <img :src="randomAvatar" class="user-avatar" alt="avatar" />
         <span class="user-name">{{ username }}</span>
         <ChevronDown :size="18" class="user-arrow" />
       </div>
@@ -35,6 +51,24 @@ const avatarUrl = computed(() => {
 </template>
 
 <style scoped>
+/* 添加头像样式 */
+.user-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #e6f0ff;
+  background: #fafdff;
+  box-shadow: 0 1px 4px rgba(24,144,255,0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(24,144,255,0.15);
+}
+
+/* 保持原有样式不变 */
 .main-header {
   width: 100%;
   height: 60px;
@@ -92,20 +126,11 @@ const avatarUrl = computed(() => {
   cursor: pointer;
   transition: background 0.18s, box-shadow 0.18s;
   border: 1px solid #e6f0ff;
+  width: 140px;
 }
 .user-block:hover {
   background: #e6f7ff;
   box-shadow: 0 4px 16px rgba(24,144,255,0.10);
-}
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.5px solid #e6f0ff;
-  background: #fafdff;
-  box-shadow: 0 1px 4px rgba(24,144,255,0.06);
-  margin-left: -5px;
 }
 .user-name {
   font-size: 15px;
@@ -130,4 +155,4 @@ const avatarUrl = computed(() => {
   .header-right { gap: 6px; }
   .user-block { padding: 2px 8px 2px 4px; gap: 4px; }
 }
-</style> 
+</style>

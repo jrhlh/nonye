@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { Settings } from 'lucide-vue-next';
-import AIyujing from '../../components1/AIyujing.vue';
+import AIyujing from '../../pages/AIyujing.vue';
 </script>
 
 <style scoped>

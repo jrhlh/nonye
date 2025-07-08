@@ -141,7 +141,7 @@ const fetchDevices = async () => {
     loading.value = false;
   }
 };
-
+const emit = defineEmits()
 // 更新图表数据
 const updateChartData = () => {
   displayedDates.value = generateDates(currentDate.value);
@@ -150,6 +150,8 @@ const updateChartData = () => {
   // 检查是否是6月8日且温度异常(38度)并显示警告
   const june8Index = displayedDates.value.indexOf('2025-06-08');
   if (june8Index !== -1 && displayedTemperatures.value[june8Index] === 38 && !hasShownJune8Alert.value) {
+    emit('handleWarning')
+
     showAlert.value = true;
     hasShownJune8Alert.value = true; // 标记已显示警告
   }

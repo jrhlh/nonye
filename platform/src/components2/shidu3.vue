@@ -178,13 +178,13 @@ onBeforeUnmount(() => {
     <div class="temperature-alerts">
       <h3>湿度异常预警</h3>
       <div class="alert">
-        <span>15:30</span>
-        <span>湿度超过阈值 28°C</span>
+        <span>5月30日</span>
+        <span>湿度超过上限阈值 15%</span>
         <span class="status">已处理</span>
       </div>
       <div class="alert">
-        <span>14:15</span>
-        <span>湿度低于阈值 18°C</span>
+        <span>6月16日</span>
+        <span>湿度低于下限阈值 18%</span>
         <span class="status">已处理</span>
       </div>
     </div>

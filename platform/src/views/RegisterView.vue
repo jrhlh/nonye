@@ -161,7 +161,7 @@ const register = async () => {
   position: relative;
   z-index: 100000;
   padding-top: 90px;
-  padding-left: 115px;
+  padding-left: 105px;
   color: #11659a;
   font-family: "Roboto", sans-serif;
   font-size: 17px;
@@ -186,7 +186,6 @@ const register = async () => {
   position: relative;
   height: 50px;
   margin-bottom: 20px;
-
   width: 344px;
 }
 
@@ -197,6 +196,7 @@ const register = async () => {
   transform: translateY(-50%);
   width: 22px;
   pointer-events: none;
+  z-index: 2;
 }
 
 .reinput-field,
@@ -208,17 +208,30 @@ const register = async () => {
   font-size: 17px;
   color: #3c3c3c;
   background-color: #f0f0f0;
-  border: none;
+  border: 1px solid transparent;
   padding-left: 50px;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  padding-right: 15px;
+}
+
+/* 添加均匀的聚焦阴影效果 */
+.reinput-field:focus,
+.reinput-field01:focus {
+  outline: none;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+  border-color: rgba(5, 90, 186, 0.3);
+  background-color: #fff;
 }
 
 .code-input-group {
-  position: relative; /* 定位上下文 */
+  position: relative;
 }
 
 .get-code-button {
   position: absolute;
-  right: 5px; /* 距离输入框右边一点距离 */
+  right: 5px;
   top: 69%;
   transform: translateY(-50%);
   width: 100px;
@@ -230,10 +243,22 @@ const register = async () => {
   cursor: pointer;
   font-size: 12px;
   z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.get-code-button:hover {
+  transform: translateY(-50%) scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.get-code-button:disabled {
+  background: #ccc;
+  transform: translateY(-50%) scale(1);
+  box-shadow: none;
 }
 
 .reinput-field01 {
-  padding-right: 100px; /* 留出按钮空间，防止文字被遮挡 */
+  padding-right: 100px;
 }
 
 .login-button {
@@ -246,5 +271,23 @@ const register = async () => {
   border-radius: 20px;
   cursor: pointer;
   margin-top: 22px;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+}
+
+.login-p {
+  font-size: 17px;
+  padding-top: 20px;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.login-p:hover {
+  color: #007bff;
+  text-decoration: underline;
 }
 </style> 

@@ -81,6 +81,7 @@ def create_app():
     from blueprints.chou2 import bp as chou2_bp
     from blueprints.chou3 import bp as chou3_bp
     from blueprints.liebiao import bp as liebiao_bp
+    from blueprints.guan import bp as guan_bp
 
     app.register_blueprint(login_bp)
     app.register_blueprint(register_bp)
@@ -102,6 +103,7 @@ def create_app():
     app.register_blueprint(chou2_bp)
     app.register_blueprint(chou3_bp)
     app.register_blueprint(liebiao_bp)
+    app.register_blueprint(guan_bp)
 
     with app.app_context():
         try:

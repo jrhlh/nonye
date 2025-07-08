@@ -197,7 +197,7 @@ def get_fault_dashboard():
         today_faults = db.execute('''
             SELECT COUNT(*) 
             FROM device 
-            WHERE status IN ('Faulty', 'Offline')
+            WHERE status IN ('Faulty')
         ''').fetchone()[0]
 
         # 2. 今日故障增加数：与昨日对比
@@ -205,7 +205,7 @@ def get_fault_dashboard():
         yesterday_faults = db.execute('''
             SELECT COUNT(*) 
             FROM device 
-            WHERE status IN ('Faulty', 'Offline') 
+            WHERE status IN ('Faulty') 
               AND DATE(created_at) = ?
         ''', (yesterday,)).fetchone()[0]
 
@@ -217,12 +217,12 @@ def get_fault_dashboard():
         monthly_faults = db.execute('''
             SELECT COUNT(*) 
             FROM device 
-            WHERE status IN ('Faulty', 'Offline') 
+            WHERE status IN ('Faulty') 
               AND DATE(created_at) LIKE ? || '%'
         ''', (current_month,)).fetchone()[0]
 
         # 4. 故障上限（可配置）
-        limit = 300
+        limit = 100
 
         return jsonify({
             'todayFaults': today_faults,
@@ -247,7 +247,7 @@ def get_fault_types():
     try:
         # 定义故障类型映射（数据库状态 -> 显示名称）
         fault_mapping = {
-            'Faulty': '功能故障',  # 设备功能异常
+            'Faulty': '传感器故障',  # 设备功能异常
             'Offline': '离线故障',  # 设备网络断开
             'Normal': '正常'  # 正常状态（用于占位）
         }
@@ -256,7 +256,7 @@ def get_fault_types():
         result = db.execute('''
             SELECT 
                 CASE status 
-                    WHEN 'Faulty' THEN '功能故障'
+                    WHEN 'Faulty' THEN '传感器故障'
                     WHEN 'Offline' THEN '离线故障'
                     ELSE '其他故障' 
                 END AS fault_type,
@@ -268,7 +268,7 @@ def get_fault_types():
         # 转换为ECharts格式并配置颜色
         data = []
         colorMap = {
-            '功能故障': '#ff7d00',  # 橙色
+            '传感器故障': '#ff7d00',  # 橙色
             '离线故障': '#e01e5a',  # 粉色
             '网络故障': '#1a73e8',  # 蓝色（预留扩展）
             '电源故障': '#ff9800',  # 深橙色（预留扩展）
@@ -284,7 +284,7 @@ def get_fault_types():
             })
 
         # 补充默认故障类型（确保图表完整性）
-        defaultTypes = ['功能故障', '离线故障', '网络故障', '电源故障', '其他故障']
+        defaultTypes = ['设备故障', '离线故障', '网络故障', '电源故障', '其他故障']
         for ft in defaultTypes:
             if not any(d['name'] == ft for d in data):
                 data.append({
@@ -570,6 +570,36 @@ def notify_responsible(fault_id):
             'success': False,
             'message': '系统异常，请重试',
             'errorDetail': str(e)
+        }), 500
+    finally:
+        if 'db' in g:
+            g.db.close()
+
+# 添加设备删除接口
+@bp.route('/api/device/<int:id>', methods=['DELETE'])
+def delete_device(id):
+    db = get_db()
+    try:
+        # 先查询设备是否存在
+        device = db.execute('SELECT id FROM device WHERE id = ?', (id,)).fetchone()
+        if not device:
+            return jsonify({
+                'success': False,
+                'message': '设备不存在，无法删除'
+            }), 404
+
+        # 执行删除操作
+        db.execute('DELETE FROM device WHERE id = ?', (id,))
+        db.commit()
+        return jsonify({
+            'success': True,
+            'message': '设备删除成功'
+        })
+    except sqlite3.Error as e:
+        db.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'删除设备失败：{str(e)}'
         }), 500
     finally:
         if 'db' in g:

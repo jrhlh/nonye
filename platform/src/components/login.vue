@@ -33,7 +33,7 @@ const login = async () => {
         token: response.data.token
       }));
 
-      router.push('/shou');
+      router.push('/dashboard');
     }
   } catch (error) {
     const axiosError = error as AxiosError;

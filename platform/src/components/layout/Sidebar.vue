@@ -19,7 +19,7 @@ const showLabels = ref(!props.collapsed);
 const menu = [
   { name: '首页', icon: Home, route: '/dashboard' },
   { name: '数据报表', icon: BarChart, route: '/reports' },
-  { name: '故障列表', icon: AlertTriangle, route: '/faults' },
+  { name: '故障列表', icon: AlertTriangle, route: '/monitoring' },
   { name: '设备管理', icon: Settings, route: '/devices' },
   { name: '人员管理', icon: Users, route: '/personnel' },
 ];

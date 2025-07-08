@@ -1,10 +1,9 @@
-<!-- AiAssistant.vue - AI助手组件 -->
 <template>
   <div class="ai-assistant-container">
     <!-- 展开的聊天面板 -->
     <div class="ai-chat-panel" v-show="isExpanded">
       <div class="panel-header">
-        <h3>禾苗小助手</h3>
+        <h3 style="font-size: 20px; letter-spacing: 2px;"> 农智通</h3>
         <button class="close-btn" @click="togglePanel">×</button>
       </div>
 
@@ -21,7 +20,14 @@
           </div>
 
           <div class="message" :class="{ 'user-message': message.isUser }">
-            {{ message.text }}
+            <template v-if="!message.isUser && message.text.includes('\n')">
+              <div v-for="(paragraph, pIndex) in message.text.split('\n')" :key="pIndex" class="message-paragraph">
+                {{ paragraph }}
+              </div>
+            </template>
+            <template v-else>
+              {{ message.text }}
+            </template>
           </div>
         </div>
       </div>
@@ -47,7 +53,7 @@
                   ref="fileInput"
                   style="display: none"
                   @change="handleFileUpload"
-                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  accept="image/*,.pdf,.doc,.docx,.txt,.xlsx"
               />
               <div class="upload-tooltip" v-if="showUploadTooltip">
                 <div class="tooltip-item" @click="handleUploadType('document')">上传文档</div>
@@ -68,9 +74,8 @@
 
             <!-- 语音按钮 -->
             <button class="action-btn voice-btn" @click="toggleVoiceInput" :class="{ 'recording': isRecording } " style="display: flex; align-items: center; justify-content: center;">
-              <svg t="1749730930888" class="icon01" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="12241" width="24" height="24">
-                <path d="M512.5 630.64c87.75 0 159.14-71.39 159.14-159.14V258.54c0-87.75-71.39-159.14-159.14-159.14s-159.14 71.39-159.14 159.14V471.5c0 87.76 71.39 159.14 159.14 159.14z m-99.14-372.1c0-26.34 10.35-51.19 29.15-69.99s43.65-29.15 69.99-29.15 51.19 10.35 69.99 29.15 29.15 43.65 29.15 69.99V471.5c0 26.34-10.35 51.19-29.15 69.99s-43.65 29.15-69.99 29.15-51.19-10.35-69.99-29.15-29.15-43.65-29.15-69.99V258.54z" p-id="12242" fill="currentColor"></path>
-                <path d="M696.65 660.31c49.37-49.37 76.55-114.76 76.55-184.15 0-16.57-13.43-30-30-30s-30 13.43-30 30c0 53.35-20.95 103.68-58.98 141.72-38.04 38.04-88.37 58.98-141.72 58.98-53.35 0-103.68-20.95-141.72-58.98-38.03-38.03-58.98-88.36-58.98-141.72 0-16.57-13.43-30-30-30s-30 13.43-30 30c0 69.38 27.19 134.78 76.56 184.15 42.18 42.18 96.07 68.15 154.15 74.82v127.68h-99.14c-16.57 0-30 13.43-30 30s13.43 30 30 30h258.28c16.57 0 30-13.43 30-30s-13.43-30-30-30H542.5V735.14c58.07-6.68 111.96-32.65 154.15-74.83z" p-id="12243" fill="currentColor"></path>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="21" viewBox="0 0 14 19" fill="none">
+                <path d="M8 15.14V17H10C10.2652 17 10.5196 17.1054 10.7071 17.2929C10.8946 17.4804 11 17.7348 11 18C11 18.2652 10.8946 18.5196 10.7071 18.7071C10.5196 18.8946 10.2652 19 10 19H4C3.73478 19 3.48043 18.8946 3.29289 18.7071C3.10535 18.5196 3 18.2652 3 18C3 17.7348 3.10535 17.4804 3.29289 17.2929C3.48043 17.1054 3.73478 17 4 17H6V15.14C4.48512 14.8998 3.10541 14.1277 2.10843 12.9621C1.11146 11.7965 0.562479 10.3138 0.559998 8.78C0.559998 8.51478 0.665355 8.26043 0.852891 8.07289C1.04043 7.88536 1.29478 7.78 1.56 7.78C1.82521 7.78 2.07957 7.88536 2.2671 8.07289C2.45464 8.26043 2.56 8.51478 2.56 8.78C2.56 9.95756 3.02778 11.0869 3.86044 11.9196C4.69311 12.7522 5.82244 13.22 7 13.22C8.17756 13.22 9.30689 12.7522 10.1396 11.9196C10.9722 11.0869 11.44 9.95756 11.44 8.78C11.44 8.51478 11.5454 8.26043 11.7329 8.07289C11.9204 7.88536 12.1748 7.78 12.44 7.78C12.7052 7.78 12.9596 7.88536 13.1471 8.07289C13.3346 8.26043 13.44 8.51478 13.44 8.78C13.4375 10.3138 12.8885 11.7965 11.8916 12.9621C10.8946 14.1277 9.51488 14.8998 8 15.14ZM4 9V3C4 2.20435 4.31607 1.44129 4.87868 0.87868C5.44129 0.316071 6.20435 0 7 0C7.79565 0 8.55871 0.316071 9.12132 0.87868C9.68393 1.44129 10 2.20435 10 3V9C10 9.79565 9.68393 10.5587 9.12132 11.1213C8.55871 11.6839 7.79565 12 7 12C6.20435 12 5.44129 11.6839 4.87868 11.1213C4.31607 10.5587 4 9.79565 4 9ZM6 3V9C6 9.26522 6.10535 9.51957 6.29289 9.70711C6.48043 9.89464 6.73478 10 7 10C7.26521 10 7.51957 9.89464 7.7071 9.70711C7.89464 9.51957 8 9.26522 8 9V3C8 2.73478 7.89464 2.48043 7.7071 2.29289C7.51957 2.10536 7.26521 2 7 2C6.73478 2 6.48043 2.10536 6.29289 2.29289C6.10535 2.48043 6 2.73478 6 3Z" fill="currentColor"/>
               </svg>
             </button>
 
@@ -117,6 +122,13 @@ interface Message {
   isThinking?: boolean;
 }
 
+interface KeyFinding {
+  icon: string;
+  type: 'success' | 'warning' | 'alert';
+  title: string;
+  description: string;
+}
+
 export default {
   name: 'AiAssistant',
   setup() {
@@ -154,6 +166,117 @@ export default {
     const currentDelay = ref(1000); // 初始延迟1秒
     const maxPollTime = ref(60000); // 最大轮询时间60秒
     const pollStartTime = ref(0);
+
+    // 关键发现数据
+    const keyFindingsData: KeyFinding[] = [
+      // 温度相关
+      {
+        icon: '!',
+        type: 'alert',
+        title: '高温预警',
+        description: '当前温度32°C超出作物生长上限(28°C)，建议启用遮阳网并加强通风，避免热害发生。'
+      },
+      {
+        icon: '✓',
+        type: 'success',
+        title: '温度适宜',
+        description: '当前温度25°C处于作物生长最佳范围(20-28°C)，有利于光合作用和开花结果。'
+      },
+      // 湿度相关
+      {
+        icon: '!',
+        type: 'alert',
+        title: '湿度过高',
+        description: '空气湿度87%RH，易诱发霉菌病害，建议加强通风并减少灌溉频率。'
+      },
+      {
+        icon: '✓',
+        type: 'success',
+        title: '湿度适宜',
+        description: '空气湿度67%RH处于理想范围(57-80%RH)，有利于作物蒸腾作用和养分吸收。'
+      },
+      {
+        icon: '!',
+        type: 'warning',
+        title: '湿度不足',
+        description: '空气湿度35%RH低于适宜值，建议增加喷雾次数防止叶片失水。'
+      },
+      // pH相关
+      {
+        icon: '✓',
+        type: 'success',
+        title: 'pH值理想',
+        description: '土壤pH6.8处于作物生长最佳范围(6.5-7.5)，养分有效性高。'
+      },
+      {
+        icon: '!',
+        type: 'warning',
+        title: 'pH值偏高',
+        description: '土壤pH8.2超出适宜范围，建议施用硫磺粉降低pH值至7.0以下。'
+      },
+      {
+        icon: '!',
+        type: 'alert',
+        title: 'pH值失衡',
+        description: '土壤pH4.5严重偏酸，多数作物无法正常生长，需立即施用石灰石粉调节。'
+      },
+      // 光照相关
+      {
+        icon: '!',
+        type: 'alert',
+        title: '光照不足',
+        description: '日均光照时长仅4小时，远低于作物需求(8小时以上)，建议补充植物生长灯。'
+      },
+      {
+        icon: '✓',
+        type: 'success',
+        title: '光照充足',
+        description: '日均光照12小时满足作物生长需求，有利于糖分积累和果实着色。'
+      },
+      {
+        icon: '!',
+        type: 'warning',
+        title: '光照过强',
+        description: '光照强度达80,000 Lux，可能造成叶片灼伤，建议使用遮阳网降低30%光照。'
+      },
+      // 土壤综合指标
+      {
+        icon: '✓',
+        type: 'success',
+        title: '土壤肥力良好',
+        description: '有机质含量3.2%，氮磷钾比例协调，满足当前作物生长周期需求。'
+      },
+      {
+        icon: '!',
+        type: 'warning',
+        title: '土壤板结',
+        description: '土壤容重1.6g/cm³偏高，透气性差，建议增施有机肥并深松耕作。'
+      },
+      {
+        icon: '!',
+        type: 'alert',
+        title: '盐渍化风险',
+        description: '土壤电导率2.8mS/cm，存在盐渍化风险，需控制化肥用量并加强排水。'
+      }
+    ];
+
+    // 获取随机关键发现
+    const getRandomKeyFindings = (count: number = 3): KeyFinding[] => {
+      return [...keyFindingsData].sort(() => Math.random() - 0.5).slice(0, count);
+    };
+
+    // 格式化关键发现为文本
+    const formatKeyFindingsToText = (findings: KeyFinding[]): string => {
+      return findings.map(item => {
+        return `${item.title}：${item.description}`;
+      }).join('\n\n');
+    };
+
+    // 检查问题是否包含关键词
+    const containsKeyFindingsKeyword = (question: string): boolean => {
+      const keywords = ['关键发现', '环境指标', '土壤数据', '生长条件'];
+      return keywords.some(keyword => question.includes(keyword));
+    };
 
     // 初始化语音识别
     const initSpeechRecognition = () => {
@@ -201,11 +324,29 @@ export default {
       }
     };
 
+    // 格式化AI回答
+    const formatAiResponse = (text: string): string => {
+      text = text.replace(/#{1,6}\s*/g, '')
+          .replace(/\*\*/g, '')
+          .replace(/\*/g, '')
+          .replace(/`{3}.*\n/g, '')
+          .replace(/`/g, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/\n\s*\n/g, '\n\n')
+          .trim();
+      return text;
+    };
+
     // 添加消息到对话列表
     const addMessage = (text: string | null, isUser: boolean, isThinking?: boolean) => {
       if (text === null) text = '';
+
+      if (!isUser) {
+        text = formatAiResponse(text);
+      }
+
       messages.value.push({
-        text: text.trim() || '（空消息）',
+        text: text.trim() || (isUser ? '' : '（空消息）'),
         isUser,
         isThinking
       });
@@ -266,11 +407,11 @@ export default {
           const thinkingIndex = messages.value.findIndex(msg => msg.isThinking);
           if (thinkingIndex !== -1) {
             messages.value[thinkingIndex] = {
-              text: "实时监测显示，当前温度为29摄氏度",
+              text: "实时监测显示：\n当前温度为29摄氏度\n建议：\n1. 温度适宜作物生长\n2. 保持当前通风状态\n3. 每2小时检查一次温度变化",
               isUser: false
             };
           } else {
-            addMessage("实时监测显示，当前温度为29摄氏度", false);
+            addMessage("实时监测显示：\n当前温度为29摄氏度\n建议：\n1. 温度适宜作物生长\n2. 保持当前通风状态\n3. 每2小时检查一次温度变化", false);
           }
           isLoading.value = false;
           resolve();
@@ -288,11 +429,11 @@ export default {
           const thinkingIndex = messages.value.findIndex(msg => msg.isThinking);
           if (thinkingIndex !== -1) {
             messages.value[thinkingIndex] = {
-              text: "最近1个月监测到有3台设备出现故障，已即时通知维修团队处理",
+              text: "设备故障报告：\n最近1个月监测到有3台设备出现故障\n\n处理状态：\n1. 已即时通知维修团队\n2. 2台已修复完成\n3. 1台正在维修中\n\n建议：\n1. 定期检查设备运行状态\n2. 建立预防性维护计划",
               isUser: false
             };
           } else {
-            addMessage("最近1个月监测到有3台设备出现故障，已即时通知维修团队处理", false);
+            addMessage("设备故障报告：\n最近1个月监测到有3台设备出现故障\n\n处理状态：\n1. 已即时通知维修团队\n2. 2台已修复完成\n3. 1台正在维修中\n\n建议：\n1. 定期检查设备运行状态\n2. 建立预防性维护计划", false);
           }
           isLoading.value = false;
           resolve();
@@ -310,15 +451,49 @@ export default {
           const thinkingIndex = messages.value.findIndex(msg => msg.isThinking);
           if (thinkingIndex !== -1) {
             messages.value[thinkingIndex] = {
-              text: "根据监测数据，近一周的平均空气湿度为80%",
+              text: "湿度监测数据：\n近一周的平均空气湿度为80%\n\n湿度变化趋势：\n1. 周一: 78%\n2. 周二: 79%\n3. 周三: 81%\n4. 周四: 82%\n5. 周五: 80%\n6. 周六: 79%\n7. 周日: 80%\n\n建议：\n1. 当前湿度适宜\n2. 注意观察是否有结露现象",
               isUser: false
             };
           } else {
-            addMessage("根据监测数据，近一周的平均空气湿度为80%", false);
+            addMessage("湿度监测数据：\n近一周的平均空气湿度为80%\n\n湿度变化趋势：\n1. 周一: 78%\n2. 周二: 79%\n3. 周三: 81%\n4. 周四: 82%\n5. 周五: 80%\n6. 周六: 79%\n7. 周日: 80%\n\n建议：\n1. 当前湿度适宜\n2. 注意观察是否有结露现象", false);
           }
           isLoading.value = false;
           resolve();
         }, 2000);
+      });
+    };
+
+    // 处理关键发现问题
+    const handleKeyFindingsQuestion = async (question: string) => {
+      addMessage(question, true);
+      addMessage("正在分析关键环境指标...", false, true);
+      isLoading.value = true;
+
+      return new Promise<void>(resolve => {
+        setTimeout(() => {
+          const randomFindings = getRandomKeyFindings();
+          const findingsText = formatKeyFindingsToText(randomFindings);
+
+          const thinkingIndex = messages.value.findIndex(msg => msg.isThinking);
+          if (thinkingIndex !== -1) {
+            messages.value[thinkingIndex] = {
+              text: findingsText,
+              isUser: false
+            };
+          } else {
+            addMessage(findingsText, false);
+          }
+
+          isLoading.value = false;
+
+          // 触发事件更新finding2.vue中的数据
+          const event = new CustomEvent('updateKeyFindings', {
+            detail: randomFindings
+          });
+          window.dispatchEvent(event);
+
+          resolve();
+        }, 1500);
       });
     };
 
@@ -344,12 +519,11 @@ export default {
       uploadedFileName.value = file.name;
       isUploading.value = true;
 
-      // 模拟上传过程
       setTimeout(() => {
         isUploading.value = false;
       }, 1000);
 
-      target.value = ''; // 允许重复选择同一个文件
+      target.value = '';
     };
 
     // 移除上传的文件
@@ -428,6 +602,13 @@ export default {
     const sendMessage = async () => {
       if ((!userInput.value.trim() && !uploadedFileName.value) || isLoading.value) return;
 
+      // 检查是否是关键发现问题
+      if (containsKeyFindingsKeyword(userInput.value)) {
+        await handleKeyFindingsQuestion(userInput.value);
+        userInput.value = '';
+        return;
+      }
+
       // 检查是否是温度问题
       if (isTemperatureQuestion(userInput.value)) {
         isLoading.value = true;
@@ -456,27 +637,39 @@ export default {
       if (uploadedFileName.value) {
         isFileInterpretation.value = true;
         const fullMessage = userInput.value.trim()
-            ? `解读文件"${uploadedFileName.value}"并回答: ${userInput.value.trim()}`
-            : `解读文件"${uploadedFileName.value}"`;
+            ? `"${uploadedFileName.value}" ${userInput.value.trim()}`
+            : `"${uploadedFileName.value}"`;
 
         addMessage(fullMessage, true);
         isLoading.value = true;
         addMessage("正在思考...", false, true);
 
-        // 清除上传状态
         const currentUploadType = uploadType.value;
+        const fileName = uploadedFileName.value; // 保存文件名以便检查扩展名
         uploadedFileName.value = '';
         uploadType.value = null;
         userInput.value = '';
 
-        // 模拟2秒后返回解读结果
         setTimeout(() => {
           const thinkingIndex = messages.value.findIndex(msg => msg.isThinking);
           if (thinkingIndex !== -1) {
+            let responseText = "";
+
+            if (currentUploadType === 'image') {
+              responseText = "图像解析完成\n\n主要内容：\n1. 识别到作物生长情况良好\n2. 叶片颜色正常\n3. 未发现明显病虫害\n\n建议：\n1. 继续保持当前管理措施\n2. 3天后再次检查";
+            } else {
+              // 检查文件是否为xlsx格式
+              const isXlsx = fileName.toLowerCase().endsWith('.xlsx');
+
+              if (isXlsx) {
+                responseText = "文档解析完成\n\n主要内容：\n1. 近几个月设备检测到的环境数据\n2. 包含设备异常点";
+              } else {
+                responseText = "文档解析完成\n\n主要内容：\n1. 农业技术指导手册\n2. 包含种植技术要点\n3. 病虫害防治方法";
+              }
+            }
+
             messages.value[thinkingIndex] = {
-              text: currentUploadType === 'image'
-                  ? "已完成图像内容解析，您有任何相关问题都可以问我"
-                  : "已完成文档内容解析，您有任何相关问题都可以问我",
+              text: responseText,
               isUser: false
             };
           }
@@ -501,7 +694,6 @@ export default {
         });
 
         if (response.data.code === 200) {
-          // 启动轮询获取回答
           const thinkingIndex = messages.value.length - 1;
           startPolling(thinkingIndex);
         } else {
@@ -532,19 +724,18 @@ export default {
       }
     };
 
-    // 开始轮询获取AI回答（优化版）
+    // 开始轮询获取AI回答
     const startPolling = (thinkingIndex: number) => {
       if (isPolling.value) return;
 
       isPolling.value = true;
       pollStartTime.value = Date.now();
-      currentDelay.value = 1000; // 重置为初始延迟
+      currentDelay.value = 1000;
 
       const poll = async () => {
         const elapsedTime = Date.now() - pollStartTime.value;
 
         if (elapsedTime >= maxPollTime.value) {
-          // 超时处理
           messages.value[thinkingIndex] = {
             text: "获取AI回答超时，请简化问题或稍后再试",
             isUser: false
@@ -572,7 +763,7 @@ export default {
               if (assistantMessages.length > 0) {
                 const latestAnswer = assistantMessages[assistantMessages.length - 1];
                 messages.value[thinkingIndex] = {
-                  text: latestAnswer.content.trim() || "抱歉，AI未返回有效回答。",
+                  text: formatAiResponse(latestAnswer.content.trim() || "抱歉，AI未返回有效回答。"),
                   isUser: false
                 };
               } else {
@@ -593,14 +784,12 @@ export default {
             return;
           }
 
-          // 使用指数退避策略调整轮询间隔
-          if (elapsedTime < 10000) { // 前10秒保持1秒间隔
+          if (elapsedTime < 10000) {
             currentDelay.value = 1000;
           } else {
             currentDelay.value = Math.min(5000, 1000 * Math.pow(1.5, Math.floor(elapsedTime / 10000)));
           }
 
-          // 继续轮询
           pollTimer = setTimeout(poll, currentDelay.value);
         } catch (pollError) {
           console.error("轮询错误:", pollError);
@@ -729,6 +918,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  height: 65px;
 }
 
 .close-btn {
@@ -751,14 +941,12 @@ export default {
   padding: 12px;
   overflow-y: auto;
   flex-grow: 1;
-
-  /* 隐藏滚动条 */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .chat-messages::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
 }
 
 .message-container {
@@ -773,10 +961,19 @@ export default {
 
 .message {
   padding: 8px 12px;
-  border-radius: 18px;
+  border-radius: 11px;
   max-width: 70%;
   width: fit-content;
   word-wrap: break-word;
+  white-space: pre-line;
+}
+
+.message-paragraph {
+  margin-bottom: 8px;
+}
+
+.message-paragraph:last-child {
+  margin-bottom: 0;
 }
 
 .user-message {
@@ -786,22 +983,21 @@ export default {
 
 .message:not(.user-message) {
   background-color: #f0f2ff;
-  margin-right: auto; /* AI消息居左显示 */
+  margin-right: auto;
 }
 
 .avatar {
   width: 45px;
   height: 40px;
   border-radius: 50%;
-  margin-right: 10px; /* AI头像与消息的间距 */
-
+  margin-right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .user-message-container .avatar {
-  display: none; /* 隐藏用户消息旁边的头像 */
+  display: none;
 }
 
 .chat-input {
@@ -818,6 +1014,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
 .chat-input input {
@@ -826,6 +1023,14 @@ export default {
   border: 1px solid #ddd;
   border-radius: 14px;
   font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.chat-input input:focus {
+  outline: none;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+  border-color: rgba(5, 90, 186, 0.3);
+  background-color: #fff;
 }
 
 .input-actions {
@@ -983,7 +1188,6 @@ export default {
   }
 }
 
-/* 上传文件显示样式 */
 .uploaded-file {
   padding: 8px 12px;
   background-color: #f0f2ff;

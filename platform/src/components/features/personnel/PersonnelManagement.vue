@@ -9,16 +9,16 @@
             <option value="Supervisor">主管</option>
             <option value="Operator">操作员</option>
           </select>
-          <BaseButton 
-            variant="primary" 
-            size="small" 
+          <BaseButton
+            variant="primary"
+            size="small"
             @click="showAddModal = true"
           >
             + 添加人员
           </BaseButton>
         </div>
       </template>
-      
+
       <div class="table-container">
         <table class="personnel-table">
           <thead>
@@ -31,9 +31,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr 
-              v-for="user in filteredUsers" 
-              :key="user.username" 
+            <tr
+              v-for="user in filteredUsers"
+              :key="user.username"
               :class="{'table-row-hover': isHovered(user.username)}"
             >
               <td>
@@ -256,12 +256,14 @@ const handleUserSubmit = (userData: User) => {
 
 .table-container {
   overflow-x: auto;
+
 }
 
 .personnel-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+
 }
 
 .personnel-table th,
@@ -320,19 +322,19 @@ const handleUserSubmit = (userData: User) => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .personnel-table {
     font-size: 12px;
   }
-  
+
   .personnel-table th,
   .personnel-table td {
     padding: 8px 12px;
   }
-  
+
   .action-buttons {
     flex-direction: column;
     gap: 4px;
   }
 }
-</style> 
+</style>

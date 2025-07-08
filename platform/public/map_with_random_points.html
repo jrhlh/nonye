@@ -433,7 +433,7 @@
             <img src="../src/assets/农田.jpg" alt="农业基地" class="farm-image">
         </div>
         <div class="farm-info">
-            <p>30亩地<br>设备7台</p>
+            <p>15亩地<br>设备7台</p>
         </div>
     </div>
 </div>
@@ -462,15 +462,9 @@
                         <i class="fa fa-upload"></i> 上传图片
                     </button>
                     <button class="btn btn-custom" id="startCameraBtn">
-                        <i class="fa fa-camera"></i> 拍照检测
+                        <i class="fa fa-camera"></i>抓拍检测
                     </button>
                     <input type="file" id="imageUpload" accept="image/*" style="display: none;">
-                    <button class="btn btn-custom" id="captureBtn" style="display: none;">
-                        <i class="fa fa-camera"></i> 拍照
-                    </button>
-                    <button class="btn btn-secondary-custom" id="retakeBtn" style="display: none;">
-                        <i class="fa fa-refresh"></i> 重拍
-                    </button>
                 </div>
 
                 <button class="btn btn-success w-100 mt-3" id="detectBtn" style="display: none;">
@@ -813,8 +807,6 @@
         document.getElementById('imagePreview').style.display = 'none';
         document.getElementById('imagePreview').src = '';
         document.getElementById('cameraPreview').style.display = 'none';
-        document.getElementById('captureBtn').style.display = 'none';
-        document.getElementById('retakeBtn').style.display = 'none';
         document.getElementById('detectBtn').style.display = 'none';
         document.getElementById('resultContainer').style.display = 'none';
         document.getElementById('startCameraBtn').style.display = 'inline-block';
@@ -846,20 +838,8 @@
             }
         });
 
-        // 启动摄像头
-        document.getElementById('startCameraBtn').addEventListener('click', startCamera);
-
-        // 拍照按钮
-        document.getElementById('captureBtn').addEventListener('click', captureImage);
-
-        // 重拍按钮
-        document.getElementById('retakeBtn').addEventListener('click', () => {
-            document.getElementById('cameraPreview').style.display = 'block';
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('captureBtn').style.display = 'block';
-            document.getElementById('retakeBtn').style.display = 'none';
-            document.getElementById('detectBtn').style.display = 'none';
-        });
+        // 实时抓拍按钮
+        document.getElementById('startCameraBtn').addEventListener('click', captureRandomImage);
 
         // 检测按钮
         document.getElementById('detectBtn').addEventListener('click', detectDisease);
@@ -871,7 +851,45 @@
         document.getElementById('downloadReportBtn').addEventListener('click', downloadReport);
     }
 
-    // 启动摄像头
+    // 随机图片文件名数组
+    const randomImages = [
+        "choimg/1.JPG",
+        "choimg/2.JPG",
+        "choimg/3.JPG",
+        "choimg/4.JPG",
+        "choimg/5.JPG",
+        "choimg/6.JPG",
+        "choimg/7.JPG",
+        "choimg/8.JPG",
+        "choimg/9.JPG",
+        "choimg/10.JPG",
+        "choimg/11.JPG",
+        "choimg/12.JPG",
+        "choimg/13.JPG",
+        "choimg/14.JPG",
+        "choimg/15.JPG",
+        "choimg/16.JPG",
+        "choimg/17.JPG"
+    ];
+
+    // 捕获随机图片
+    function captureRandomImage() {
+        // 随机选择一张图片
+        const randomIndex = Math.floor(Math.random() * randomImages.length);
+        const randomImagePath = randomImages[randomIndex];
+
+        // 显示加载状态
+        document.getElementById('uploadPlaceholder').style.display = 'none';
+        const imgPreview = document.getElementById('imagePreview');
+        imgPreview.src = randomImagePath;
+        imgPreview.style.display = 'block';
+        document.getElementById('detectBtn').style.display = 'block';
+
+        // 关闭摄像头（如果有）
+        stopCamera();
+    }
+
+    // 启动摄像头（已移除，但保留函数定义以防需要）
     async function startCamera() {
         try {
             document.getElementById('uploadPlaceholder').style.display = 'none';
@@ -910,7 +928,7 @@
         }
     }
 
-    // 拍照
+    // 拍照（已移除，但保留函数定义以防需要）
     function captureImage() {
         const cameraPreview = document.getElementById('cameraPreview');
         const canvas = document.getElementById('captureCanvas');
